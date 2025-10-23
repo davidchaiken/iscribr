@@ -25,7 +25,7 @@ async function generateAltText(imgSrc) {
       content: [
         {
           type: 'text',
-          value: `Please provide a functional, objective description of the provided image in no more than around 30 words so that someone who could not see it would be able to imagine it. If possible, follow an “object-action-context” framework. The object is the main focus. The action describes what’s happening, usually what the object is doing. The context describes the surrounding environment. If there is text found in the image, do your best to transcribe the important bits, even if it extends the word count beyond 30 words. It should not contain quotation marks, as those tend to cause issues when rendered on the web. If there is no text found in the image, then there is no need to mention it. You should not begin the description with any variation of “The image”.`
+          value: `Please provide a functional, objective description of the provided image in no more than around 30 words so that someone who could not see it would be able to imagine it. If possible, follow an "object-action-context" framework. The object is the main focus. The action describes what's happening, usually what the object is doing. The context describes the surrounding environment. If there is text found in the image, do your best to transcribe the important bits, even if it extends the word count beyond 30 words. It should not contain quotation marks, as those tend to cause issues when rendered on the web. If there is no text found in the image, then there is no need to mention it. You should not begin the description with any variation of "The image".`
         },
         { type: 'image', value: imageBitmap }
       ]
@@ -36,14 +36,86 @@ async function generateAltText(imgSrc) {
 
 chrome.contextMenus.onClicked.addListener(async (info, _tab) => {
   if (info.menuItemId === 'generateAltText' && info.srcUrl) {
+    console.log('[Alt Texter] Context menu clicked for image:', info.srcUrl);
+    console.log('[Alt Texter] Generating alt text...');
+    
     // Start opening the popup
     const [result] = await Promise.allSettled([
       generateAltText(info.srcUrl),
       chrome.action.openPopup()
     ]);
+    
+    if (result.status === 'fulfilled') {
+      console.log('[Alt Texter] Alt text generated successfully:', result.value);
+    } else {
+      console.error('[Alt Texter] Error generating alt text:', result.reason.message);
+    }
+    
     chrome.runtime.sendMessage({
       action: 'alt-text',
       text: result.status === 'fulfilled' ? result.value : result.reason.message
     });
+  }
+});
+
+// Handle keyboard shortcut
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  if (command === 'generate-alt-text') {
+    console.log('[Alt Texter] Keyboard shortcut (Alt+I) pressed');
+    
+    // Ask the content script for the current image (focused or hovered)
+    const response = await chrome.tabs.sendMessage(tab.id, { 
+      action: 'get-hovered-image' 
+    }).catch(() => null);
+    
+    if (response?.imageUrl) {
+      console.log('[Alt Texter] Image URL received:', response.imageUrl);
+      console.log('[Alt Texter] Detection method:', response.detectionMethod);
+      console.log('[Alt Texter] Generating alt text...');
+      
+      const isScreenReaderMode = response.detectionMethod?.includes('screen reader') || 
+                                  response.detectionMethod?.includes('focused') ||
+                                  response.detectionMethod?.includes('active');
+      
+      // Generate alt text for the image
+      const [result] = await Promise.allSettled([
+        generateAltText(response.imageUrl),
+        chrome.action.openPopup()
+      ]);
+      
+      if (result.status === 'fulfilled') {
+        console.log('[Alt Texter] Alt text generated successfully:', result.value);
+        
+        // If using screen reader mode, announce the alt text via ARIA live region
+        if (isScreenReaderMode) {
+          console.log('[Alt Texter] Screen reader mode detected - announcing alt text');
+          await chrome.tabs.sendMessage(tab.id, {
+            action: 'announce-to-screen-reader',
+            text: result.value
+          }).catch((err) => {
+            console.warn('[Alt Texter] Could not announce to screen reader:', err);
+          });
+        }
+      } else {
+        console.error('[Alt Texter] Error generating alt text:', result.reason.message);
+      }
+      
+      chrome.runtime.sendMessage({
+        action: 'alt-text',
+        text: result.status === 'fulfilled' ? result.value : result.reason.message
+      });
+    } else {
+      console.warn('[Alt Texter] No image detected');
+      // No image detected, show error in popup
+      try {
+        await chrome.action.openPopup();
+        chrome.runtime.sendMessage({
+          action: 'alt-text',
+          text: 'No image detected. Navigate to an image or hover over one and press the shortcut again.'
+        });
+      } catch (e) {
+        // Popup couldn't open, that's ok
+      }
+    }
   }
 });

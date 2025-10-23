@@ -1,0 +1,175 @@
+// Track the last hovered image element (for mouse users)
+let lastHoveredImage = null;
+let lastImageUrl = null;
+
+// Track the focused element (for screen reader users)
+let focusedElement = null;
+
+// Listen for focus changes (used by screen readers like VoiceOver)
+document.addEventListener('focus', function(e) {
+  focusedElement = e.target;
+}, true);
+
+document.addEventListener('blur', function(e) {
+  if (focusedElement === e.target) {
+    focusedElement = null;
+  }
+}, true);
+
+// Function to extract image URL from an element
+function getImageUrl(element) {
+  if (!element) return null;
+  
+  // Check if it's an IMG tag
+  if (element.tagName === 'IMG') {
+    // For srcset, get the highest resolution
+    if (element.srcset) {
+      const sources = element.srcset.split(',').map(s => s.trim());
+      // Get the last one (usually highest resolution)
+      const lastSrc = sources[sources.length - 1];
+      const url = lastSrc.split(' ')[0];
+      return url;
+    }
+    return element.currentSrc || element.src;
+  }
+  
+  // Check for background-image
+  const bgImage = window.getComputedStyle(element).backgroundImage;
+  if (bgImage && bgImage !== 'none') {
+    const match = bgImage.match(/url\(['"]?(.*?)['"]?\)/);
+    if (match) return match[1];
+  }
+  
+  return null;
+}
+
+// Track mouse movements to know which image the user is hovering over
+document.addEventListener('mouseover', function(e) {
+  const url = getImageUrl(e.target);
+  if (url) {
+    lastHoveredImage = e.target;
+    lastImageUrl = url;
+    console.log('[Alt Texter] Image detected:', url);
+  }
+}, true);
+
+// Also track with more frequent updates using mousemove
+document.addEventListener('mousemove', function(e) {
+  // Only check every 100ms to avoid performance issues
+  if (!document._lastImageCheck || Date.now() - document._lastImageCheck > 100) {
+    document._lastImageCheck = Date.now();
+    const element = document.elementFromPoint(e.clientX, e.clientY);
+    const url = getImageUrl(element);
+    if (url) {
+      lastHoveredImage = element;
+      lastImageUrl = url;
+    }
+  }
+}, true);
+
+// Helper function to find an image within or as the element
+function findImageInElement(element) {
+  if (!element) return null;
+  
+  console.log('[Alt Texter] Searching for image in element:', element.tagName, element);
+  
+  // Check if the element itself is an image
+  const directUrl = getImageUrl(element);
+  if (directUrl) {
+    console.log('[Alt Texter] Element itself is an image:', directUrl);
+    return { element: element, url: directUrl };
+  }
+  
+  // Look for an img tag within the element
+  const imgTag = element.querySelector('img');
+  if (imgTag) {
+    const imgUrl = getImageUrl(imgTag);
+    if (imgUrl) {
+      console.log('[Alt Texter] Found img tag inside element:', imgUrl);
+      return { element: imgTag, url: imgUrl };
+    }
+  }
+  
+  // Check if element has a background image
+  const bgUrl = getImageUrl(element);
+  if (bgUrl) {
+    console.log('[Alt Texter] Element has background image:', bgUrl);
+    return { element: element, url: bgUrl };
+  }
+  
+  console.log('[Alt Texter] No image found in element');
+  return null;
+}
+
+// Listen for messages from the background script asking for the current image
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'get-hovered-image') {
+    // Smart fallback: prioritize focused element (screen reader), then mouse hover
+    let targetElement = null;
+    let targetUrl = null;
+    let detectionMethod = '';
+    
+    // First, check if there's a focused element (VoiceOver/screen reader navigation)
+    if (focusedElement) {
+      console.log('[Alt Texter] Checking focused element:', focusedElement.tagName);
+      const imageInfo = findImageInElement(focusedElement);
+      if (imageInfo) {
+        targetElement = imageInfo.element;
+        targetUrl = imageInfo.url;
+        detectionMethod = 'focused element (screen reader)';
+        console.log('[Alt Texter] Using focused element (screen reader detected)');
+      }
+    }
+    
+    // Also check document.activeElement as a backup
+    if (!targetUrl && document.activeElement && document.activeElement !== focusedElement) {
+      console.log('[Alt Texter] Checking document.activeElement:', document.activeElement.tagName);
+      const imageInfo = findImageInElement(document.activeElement);
+      if (imageInfo) {
+        targetElement = imageInfo.element;
+        targetUrl = imageInfo.url;
+        detectionMethod = 'active element';
+        console.log('[Alt Texter] Using document.activeElement');
+      }
+    }
+    
+    // Fall back to mouse-hovered element
+    if (!targetUrl && lastImageUrl) {
+      targetElement = lastHoveredImage;
+      targetUrl = lastImageUrl;
+      detectionMethod = 'mouse hover';
+      console.log('[Alt Texter] Falling back to mouse-hovered element');
+    }
+    
+    console.log('[Alt Texter] Detection method:', detectionMethod);
+    console.log('[Alt Texter] Sending image URL to background:', targetUrl);
+    sendResponse({ imageUrl: targetUrl, detectionMethod: detectionMethod });
+  } else if (request.action === 'announce-to-screen-reader') {
+    // Create or update ARIA live region for screen reader announcement
+    console.log('[Alt Texter] Announcing to screen reader:', request.text);
+    
+    let liveRegion = document.getElementById('alt-texter-live-region');
+    if (!liveRegion) {
+      liveRegion = document.createElement('div');
+      liveRegion.id = 'alt-texter-live-region';
+      liveRegion.setAttribute('aria-live', 'assertive');
+      liveRegion.setAttribute('aria-atomic', 'true');
+      liveRegion.style.position = 'absolute';
+      liveRegion.style.left = '-10000px';
+      liveRegion.style.width = '1px';
+      liveRegion.style.height = '1px';
+      liveRegion.style.overflow = 'hidden';
+      document.body.appendChild(liveRegion);
+    }
+    
+    // Clear and then set the text (helps ensure it's announced)
+    liveRegion.textContent = '';
+    setTimeout(() => {
+      liveRegion.textContent = 'Alt text: ' + request.text;
+    }, 100);
+    
+    sendResponse({ success: true });
+  }
+  return true;
+});
+
