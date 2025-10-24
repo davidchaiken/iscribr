@@ -101,6 +101,253 @@ function findImageInElement(element) {
   return null;
 }
 
+// Pinterest-specific analysis function
+function analyzePinterestPage() {
+  if (!window.location.hostname.includes('pinterest.com')) {
+    return null;
+  }
+  
+  console.log('[Alt Texter] Analyzing Pinterest page structure...');
+  
+  // Look for common Pinterest image containers
+  const possibleSelectors = [
+    '[data-test-id="pin-closeup-image"]',
+    '[data-test-id="pin-image"]', 
+    '.PinImage',
+    '.pinImage',
+    'img[alt*="Pin"]',
+    'img[src*="pinimg"]',
+    // Look for the main content image
+    'main img',
+    '[role="main"] img',
+    '.pin-closeup img',
+    // Pinterest specific patterns
+    '[data-test-id="closeup-image"]',
+    '[data-test-id="pin-detail-image"]',
+    'img[data-test-id*="image"]',
+    // Look for large images that might be the main pin
+    'img[style*="width"]',
+    'img[style*="height"]'
+  ];
+  
+  const results = [];
+  
+  possibleSelectors.forEach(selector => {
+    const elements = document.querySelectorAll(selector);
+    elements.forEach((el, index) => {
+      const rect = el.getBoundingClientRect();
+      const isVisible = rect.width > 0 && rect.height > 0;
+      const tabIndex = el.getAttribute('tabindex');
+      const role = el.getAttribute('role');
+      
+      results.push({
+        selector: selector,
+        index: index,
+        element: el,
+        tagName: el.tagName,
+        src: el.src || el.currentSrc,
+        alt: el.alt,
+        tabIndex: tabIndex,
+        role: role,
+        isVisible: isVisible,
+        dimensions: `${Math.round(rect.width)}x${Math.round(rect.height)}`,
+        position: `${Math.round(rect.left)},${Math.round(rect.top)}`,
+        // Check if it's likely the main image (largest visible image)
+        isLikelyMain: isVisible && rect.width > 200 && rect.height > 200,
+        // Additional accessibility info
+        ariaLabel: el.getAttribute('aria-label'),
+        ariaDescribedBy: el.getAttribute('aria-describedby'),
+        title: el.getAttribute('title'),
+        // Check parent elements for context
+        parentTag: el.parentElement?.tagName,
+        parentClass: el.parentElement?.className,
+        parentId: el.parentElement?.id
+      });
+    });
+  });
+  
+  // Sort by size to find the main image
+  const visibleImages = results.filter(r => r.isVisible);
+  visibleImages.sort((a, b) => {
+    const aSize = a.dimensions.split('x').reduce((w, h) => w * h, 1);
+    const bSize = b.dimensions.split('x').reduce((w, h) => w * h, 1);
+    return bSize - aSize;
+  });
+  
+  console.log('[Alt Texter] Pinterest analysis results:', {
+    totalElements: results.length,
+    visibleImages: visibleImages.length,
+    mainImageCandidate: visibleImages[0],
+    allResults: results
+  });
+  
+  return {
+    mainImageCandidate: visibleImages[0],
+    allResults: results,
+    recommendations: generateAccessibilityRecommendations(visibleImages[0])
+  };
+}
+
+function generateAccessibilityRecommendations(mainImage) {
+  if (!mainImage) return [];
+  
+  const recommendations = [];
+  
+  if (!mainImage.tabIndex || mainImage.tabIndex === '-1') {
+    recommendations.push('Add tabindex="0" to make image focusable');
+  }
+  
+  if (!mainImage.role) {
+    recommendations.push('Consider adding role="img" for better screen reader support');
+  }
+  
+  if (!mainImage.alt || mainImage.alt.trim() === '') {
+    recommendations.push('Add meaningful alt text');
+  }
+  
+  if (!mainImage.ariaLabel && !mainImage.alt) {
+    recommendations.push('Add aria-label for screen reader users');
+  }
+  
+  return recommendations;
+}
+
+// Helper function to make Pinterest analysis easily accessible from console
+window.analyzePinterest = function() {
+  return analyzePinterestPage();
+};
+
+// Helper function to make Pinterest image focusable from console
+window.makePinterestFocusable = function() {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({action: 'make-pinterest-focusable'}, resolve);
+  });
+};
+
+// Manual Pinterest fix function (for console use)
+window.fixPinterestTabNavigation = function() {
+  console.log('🔍 Searching for main Pin image...');
+  
+  // Find the main image (largest visible image)
+  const allImages = Array.from(document.querySelectorAll('img'));
+  const visibleImages = allImages.filter(img => {
+    const rect = img.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  });
+  
+  // Sort by size to find the main image
+  visibleImages.sort((a, b) => {
+    const aSize = a.getBoundingClientRect().width * a.getBoundingClientRect().height;
+    const bSize = b.getBoundingClientRect().width * b.getBoundingClientRect().height;
+    return bSize - aSize;
+  });
+  
+  const mainImage = visibleImages[0];
+  
+  if (mainImage) {
+    console.log('✅ Found main Pin image:', {
+      src: mainImage.src,
+      dimensions: `${Math.round(mainImage.getBoundingClientRect().width)}x${Math.round(mainImage.getBoundingClientRect().height)}`,
+      currentTabIndex: mainImage.getAttribute('tabindex'),
+      currentRole: mainImage.getAttribute('role'),
+      currentAlt: mainImage.alt
+    });
+    
+    // Make it focusable
+    mainImage.setAttribute('tabindex', '0');
+    mainImage.setAttribute('role', 'img');
+    
+    // Add descriptive alt text if empty
+    if (!mainImage.alt || mainImage.alt.trim() === '') {
+      const pageTitle = document.title || 'Pinterest Pin';
+      mainImage.alt = `Main Pin image - ${pageTitle}`;
+    }
+    
+    console.log('🎯 Made image focusable! Try pressing Tab now.');
+    console.log('📋 New attributes:', {
+      tabindex: mainImage.getAttribute('tabindex'),
+      role: mainImage.getAttribute('role'),
+      alt: mainImage.alt
+    });
+    
+    // Focus the image
+    mainImage.focus();
+    console.log('🎯 Image focused! You should see a focus outline.');
+    
+    return mainImage;
+  } else {
+    console.log('❌ No main image found');
+    return null;
+  }
+};
+
+// Auto-fix Pinterest tab navigation when page loads
+function autoFixPinterestTabNavigation() {
+  if (!window.location.hostname.includes('pinterest.com')) {
+    return;
+  }
+  
+  // Wait for page to fully load
+  setTimeout(() => {
+    console.log('[Alt Texter] Auto-fixing Pinterest tab navigation...');
+    
+    // Find the main image (largest visible image)
+    const allImages = Array.from(document.querySelectorAll('img'));
+    const visibleImages = allImages.filter(img => {
+      const rect = img.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+    
+    // Sort by size to find the main image
+    visibleImages.sort((a, b) => {
+      const aSize = a.getBoundingClientRect().width * a.getBoundingClientRect().height;
+      const bSize = b.getBoundingClientRect().width * b.getBoundingClientRect().height;
+      return bSize - aSize;
+    });
+    
+    const mainImage = visibleImages[0];
+    
+    if (mainImage && mainImage.getBoundingClientRect().width > 200) {
+      // Check if already fixed
+      if (mainImage.getAttribute('tabindex') === '0') {
+        console.log('[Alt Texter] Pinterest image already focusable');
+        return;
+      }
+      
+      console.log('[Alt Texter] Making Pinterest main image focusable:', {
+        src: mainImage.src,
+        dimensions: `${Math.round(mainImage.getBoundingClientRect().width)}x${Math.round(mainImage.getBoundingClientRect().height)}`
+      });
+      
+      // Make it focusable
+      mainImage.setAttribute('tabindex', '0');
+      mainImage.setAttribute('role', 'img');
+      
+      // Add descriptive alt text if empty
+      if (!mainImage.alt || mainImage.alt.trim() === '') {
+        // Try to extract title from page or use generic description
+        const pageTitle = document.title || 'Pinterest Pin';
+        mainImage.alt = `Main Pin image - ${pageTitle}`;
+      }
+      
+      // Focus the image automatically
+      try {
+        mainImage.focus();
+        console.log('[Alt Texter] ✅ Pinterest image is now keyboard accessible and focused');
+      } catch (error) {
+        console.log('[Alt Texter] ✅ Pinterest image is now keyboard accessible (focus failed:', error.message, ')');
+      }
+    }
+  }, 1000); // Wait 1 second for page to load
+}
+
+// Run auto-fix when page loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', autoFixPinterestTabNavigation);
+} else {
+  autoFixPinterestTabNavigation();
+}
+
 // Listen for messages from the background script asking for the current image
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'get-hovered-image') {
@@ -169,6 +416,42 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }, 100);
     
     sendResponse({ success: true });
+  } else if (request.action === 'analyze-pinterest') {
+    // Analyze Pinterest page structure
+    const analysis = analyzePinterestPage();
+    sendResponse(analysis);
+  } else if (request.action === 'make-pinterest-focusable') {
+    // Attempt to make the main Pinterest image focusable
+    const analysis = analyzePinterestPage();
+    if (analysis && analysis.mainImageCandidate) {
+      const element = analysis.mainImageCandidate.element;
+      
+      try {
+        // Make the element focusable
+        element.setAttribute('tabindex', '0');
+        
+        // Add role if missing
+        if (!element.getAttribute('role')) {
+          element.setAttribute('role', 'img');
+        }
+        
+        // Focus the element
+        element.focus();
+        
+        console.log('[Alt Texter] Made Pinterest image focusable and focused it');
+        sendResponse({ 
+          success: true, 
+          element: element.tagName,
+          src: element.src || element.currentSrc,
+          dimensions: analysis.mainImageCandidate.dimensions
+        });
+      } catch (error) {
+        console.error('[Alt Texter] Error making Pinterest image focusable:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    } else {
+      sendResponse({ success: false, error: 'No main image found on Pinterest page' });
+    }
   }
   return true;
 });
