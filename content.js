@@ -689,29 +689,32 @@ function findPinterestFeedImages() {
   });
   
   // Filter for Pinterest images and exclude profile pictures and UI elements
-  const pinterestImages = visibleImages.filter(img => 
-    img.src && 
-    img.src.includes('pinimg') &&
-    img.getBoundingClientRect().width > 100 &&
-    img.getBoundingClientRect().height > 100 &&
-    !img.closest('[aria-hidden="true"]') &&
-    // Exclude profile pictures and UI elements by position and size
-    !img.closest('header') && // Exclude header elements
-    !img.closest('nav') && // Exclude navigation elements
-    !img.closest('[role="banner"]') && // Exclude banner elements
-    // Exclude small circular images (likely profile pictures)
-    !(img.getBoundingClientRect().width < 200 && img.getBoundingClientRect().height < 200) &&
-    // Only include images in the main content area (below header, not in sidebar)
-    img.getBoundingClientRect().top > 100 &&
-    img.getBoundingClientRect().left < window.innerWidth * 0.8
-  );
+  const pinterestImages = visibleImages.filter(img => {
+    const rect = img.getBoundingClientRect();
+    return img.src && 
+      img.src.includes('pinimg') &&
+      rect.width > 100 &&
+      rect.height > 100 &&
+      !img.closest('[aria-hidden="true"]') &&
+      // Exclude profile pictures and UI elements by position and size
+      !img.closest('header') && // Exclude header elements
+      !img.closest('nav') && // Exclude navigation elements
+      !img.closest('[role="banner"]') && // Exclude banner elements
+      // Exclude small circular images (likely profile pictures)
+      !(rect.width < 200 && rect.height < 200) &&
+      // Only include images in the main content area (below header, not in sidebar)
+      rect.top > 100 &&
+      rect.left < window.innerWidth * 0.8;
+  });
   
   // Sort by position (top-left first)
   pinterestImages.sort((a, b) => {
     const aRect = a.getBoundingClientRect();
     const bRect = b.getBoundingClientRect();
     
-    if (Math.abs(aRect.top - bRect.top) > 10) {
+    const topDiff = Math.abs(aRect.top - bRect.top);
+    
+    if (topDiff > 10) {
       return aRect.top - bRect.top;
     }
     return aRect.left - bRect.left;
