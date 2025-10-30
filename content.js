@@ -164,6 +164,32 @@ function findImageInElement(element) {
   return null;
 }
 
+// Helper function to find a video element or video within an element
+function findVideoInElement(element) {
+  if (!element) return null;
+  
+  // Check if element itself is a video
+  if (element.tagName === 'VIDEO') {
+    return element;
+  }
+  
+  // Look for video tag within the element
+  const videoTag = element.querySelector('video');
+  return videoTag || null;
+}
+
+// Helper to check if video is large enough to be meaningful (not a thumbnail)
+function isLargeEnoughVideo(video, minSize = 200) {
+  try {
+    const rect = video.getBoundingClientRect();
+    const width = Math.max(video.videoWidth || rect.width || 0, rect.width || 0);
+    const height = Math.max(video.videoHeight || rect.height || 0, rect.height || 0);
+    return width >= minSize && height >= minSize;
+  } catch {
+    return false;
+  }
+}
+
 // Pinterest-specific analysis function
 function analyzePinterestPage() {
   if (!window.location.hostname.includes('pinterest.com')) {
@@ -1371,6 +1397,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         targetUrl = imageInfo.url;
         detectionMethod = 'focused element (screen reader)';
         console.log('[Alt Texter] Using focused element (screen reader detected)');
+      } else {
+        // No image found, check for video in focused element
+        const videoElement = findVideoInElement(focusedElement);
+        if (videoElement && isLargeEnoughVideo(videoElement)) {
+          console.log('[Alt Texter] Video detected in focused element:', videoElement);
+          // Try to get poster frame URL
+          const posterUrl = videoElement.poster || 
+                           videoElement.getAttribute('poster') || 
+                           videoElement.getAttribute('data-poster') ||
+                           null;
+          sendResponse({
+            video: true,
+            detectionMethod: 'focused video (screen reader)',
+            hasTargetElement: true,
+            targetElement: videoElement,
+            posterUrl: posterUrl
+          });
+          return true; // Keep channel open
+        }
       }
     }
     
@@ -1383,6 +1428,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         targetUrl = imageInfo.url;
         detectionMethod = 'active element';
         console.log('[Alt Texter] Using document.activeElement');
+      } else {
+        // No image found, check for video in active element
+        const videoElement = findVideoInElement(document.activeElement);
+        if (videoElement && isLargeEnoughVideo(videoElement)) {
+          console.log('[Alt Texter] Video detected in active element:', videoElement);
+          // Try to get poster frame URL
+          const posterUrl = videoElement.poster || 
+                           videoElement.getAttribute('poster') || 
+                           videoElement.getAttribute('data-poster') ||
+                           null;
+          sendResponse({
+            video: true,
+            detectionMethod: 'active element (video)',
+            hasTargetElement: true,
+            targetElement: videoElement,
+            posterUrl: posterUrl
+          });
+          return true;
+        }
       }
     }
     
@@ -1427,6 +1491,65 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           detectionMethod = 'Pinterest feed fallback';
           console.log('[Alt Texter] Using Pinterest feed fallback');
         }
+      }
+    }
+    
+    // If no image was found, check for videos as fallback
+    if (!targetUrl) {
+      // Check focused element for video
+      if (focusedElement) {
+        const videoElement = findVideoInElement(focusedElement);
+        if (videoElement && isLargeEnoughVideo(videoElement)) {
+          console.log('[Alt Texter] Video detected in focused element:', videoElement);
+          sendResponse({
+            video: true,
+            detectionMethod: 'focused video (screen reader)',
+            hasTargetElement: true,
+            targetElement: videoElement
+          });
+          return true; // Keep channel open
+        }
+      }
+      
+      // Check activeElement for video
+      if (document.activeElement && document.activeElement !== focusedElement) {
+        const videoElement = findVideoInElement(document.activeElement);
+        if (videoElement && isLargeEnoughVideo(videoElement)) {
+          console.log('[Alt Texter] Video detected in active element:', videoElement);
+          sendResponse({
+            video: true,
+            detectionMethod: 'active element (video)',
+            hasTargetElement: true,
+            targetElement: videoElement
+          });
+          return true;
+        }
+      }
+      
+      // Final fallback: search for videos in viewport
+      const allVideos = Array.from(document.querySelectorAll('video'));
+      const visibleVideos = allVideos.filter(vid => {
+        const rect = vid.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && isLargeEnoughVideo(vid);
+      });
+      
+      if (visibleVideos.length > 0) {
+        console.log('[Alt Texter] Video detected via fallback search:', visibleVideos[0]);
+        const videoElement = visibleVideos[0];
+        // Try to get poster frame URL
+        const posterUrl = videoElement.poster || 
+                         videoElement.getAttribute('poster') || 
+                         videoElement.getAttribute('data-poster') ||
+                         null;
+        // Use the first visible, large-enough video
+        sendResponse({
+          video: true,
+          detectionMethod: 'fallback video search',
+          hasTargetElement: true,
+          targetElement: videoElement,
+          posterUrl: posterUrl
+        });
+        return true;
       }
     }
     

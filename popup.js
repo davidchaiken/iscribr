@@ -7,6 +7,7 @@ let ariaLabelRemoved = false; // Track if we've removed aria-label for this popu
 let isResetting = false; // Prevent multiple simultaneous resets
 let hasFinalText = false; // Prevent reset from overwriting final text
 let controlsEnabled = false; // Track when controls become tabbable
+let isVideoPoster = false; // Track if current generation is for a video poster
 
 function enableControls() {
   if (controlsEnabled) return;
@@ -66,8 +67,11 @@ async function translate(string) {
 }
 
 async function showAltText() {
+  // Prefix video poster descriptions so users know what they're reading
+  const displayText = isVideoPoster ? `Video poster description: ${text}` : text;
+  
   // Set the new text
-  altTextInput.value = text;
+  altTextInput.value = displayText;
   hasFinalText = true;
   // Keep textarea readonly so VoiceOver doesn't give editing instructions
   // loading.setAttribute('hidden', true);
@@ -81,7 +85,7 @@ async function showAltText() {
   const liveRegion = document.getElementById('liveRegion');
   if (liveRegion) {
     liveRegion.textContent = '';
-    setTimeout(() => { liveRegion.textContent = text; }, 120);
+    setTimeout(() => { liveRegion.textContent = displayText; }, 120);
   }
   
   // Do not change focus here to avoid interrupting the live region announcement
@@ -97,7 +101,33 @@ async function showAltText() {
 }
 
 chrome.runtime.onMessage.addListener(async function (request) {
-  if (request.action === 'alt-text') {
+  if (request.action === 'set-video-poster-flag') {
+    // Set video poster flag early, before generation starts
+    isVideoPoster = request.isVideoPoster === true;
+    
+    // Update the generating message if we're in generating state
+    if (!hasFinalText && altTextInput.value.includes('Generating')) {
+      const generatingMsg = isVideoPoster ? 'Generating description for video poster...' : 'Generating image description...';
+      altTextInput.value = generatingMsg;
+      const liveRegion = document.getElementById('liveRegion');
+      if (liveRegion) {
+        liveRegion.textContent = generatingMsg;
+      }
+    }
+  } else if (request.action === 'alt-text') {
+    // Check if this is a video poster description (as backup)
+    isVideoPoster = request.isVideoPoster === true || isVideoPoster;
+    
+    // If we're still in generating state, update the message
+    if (!hasFinalText && altTextInput.value.includes('Generating')) {
+      const generatingMsg = isVideoPoster ? 'Generating description for video poster...' : 'Generating image description...';
+      altTextInput.value = generatingMsg;
+      const liveRegion = document.getElementById('liveRegion');
+      if (liveRegion) {
+        liveRegion.textContent = generatingMsg;
+      }
+    }
+    
     text = request.text;
     if (lang.value != 'en') {
       text = await translate(text);
@@ -122,9 +152,11 @@ function resetPopupForVoiceOver(forceReset = false) {
   // New popup session: clear any prior final-text state
   hasFinalText = false;
   controlsEnabled = false;
+  isVideoPoster = false; // Reset video poster flag
   
   // Reset textarea to initial state and hide from a11y to avoid VO announcing control type
-  altTextInput.value = 'Generating image description...';
+  const generatingMsg = isVideoPoster ? 'Generating description for video poster...' : 'Generating image description...';
+  altTextInput.value = generatingMsg;
   altTextInput.setAttribute('aria-hidden', 'true');
   altTextInput.setAttribute('tabindex', '-1');
   altTextInput.setAttribute('readonly', 'readonly');
@@ -166,12 +198,8 @@ function resetPopupForVoiceOver(forceReset = false) {
   // Reset live region and announce generating state
   const liveRegion = document.getElementById('liveRegion');
   if (liveRegion) {
-    liveRegion.textContent = 'Generating image description...';
-  }
-  
-  // Ensure single live region reflects generating state (no focus change)
-  if (liveRegion) {
-    liveRegion.textContent = 'Generating image description...';
+    const generatingMsg = isVideoPoster ? 'Generating description for video poster...' : 'Generating image description...';
+    liveRegion.textContent = generatingMsg;
   }
   
   // Do not move focus here; user can wait for the description or press Tab

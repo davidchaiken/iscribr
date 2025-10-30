@@ -76,6 +76,86 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
       action: 'get-hovered-image' 
     }).catch(() => null);
     
+    // Check if a video was detected instead of an image
+    if (response?.video === true) {
+      console.log('[Alt Texter] Video detected:', response.detectionMethod);
+      
+      // If video has a poster frame, describe that instead
+      if (response.posterUrl) {
+        console.log('[Alt Texter] Video has poster frame, describing poster:', response.posterUrl);
+        
+        const isScreenReaderMode = response.detectionMethod?.includes('screen reader') || 
+                                   response.detectionMethod?.includes('focused') ||
+                                   response.detectionMethod?.includes('active');
+        
+        // Open popup first and indicate it's a video poster
+        try {
+          await chrome.action.openPopup();
+          // Send a message immediately to set the video poster flag before generation
+          chrome.runtime.sendMessage({
+            action: 'set-video-poster-flag',
+            isVideoPoster: true
+          }).catch(() => {
+            // Popup might not be ready yet, that's ok
+          });
+        } catch (e) {
+          // Popup couldn't open
+        }
+        
+        // Generate alt text for the poster image
+        const [result] = await Promise.allSettled([
+          generateAltText(response.posterUrl)
+        ]);
+        
+        if (result.status === 'fulfilled') {
+          console.log('[Alt Texter] Poster frame description generated successfully:', result.value);
+          
+          // If using screen reader mode, announce the alt text via ARIA live region
+          if (isScreenReaderMode) {
+            console.log('[Alt Texter] Screen reader mode detected - announcing poster description');
+            await chrome.tabs.sendMessage(tab.id, {
+              action: 'announce-to-screen-reader',
+              text: result.value
+            }).catch((err) => {
+              console.warn('[Alt Texter] Could not announce to screen reader:', err);
+            });
+          }
+        } else {
+          console.error('[Alt Texter] Error generating poster description:', result.reason.message);
+        }
+        
+        chrome.runtime.sendMessage({
+          action: 'alt-text',
+          text: result.status === 'fulfilled' ? result.value : result.reason.message,
+          isVideoPoster: true // Indicate this is a video poster description
+        }).catch((err) => {
+          // Handle popup closed error
+          if (!err.message?.includes('Receiving end does not exist') && 
+              !err.message?.includes('Could not establish connection')) {
+            console.warn('[Alt Texter] Unexpected error:', err);
+          }
+        });
+      } else {
+        // No poster frame, show message that videos aren't supported yet
+        try {
+          await chrome.action.openPopup();
+          chrome.runtime.sendMessage({
+            action: 'alt-text',
+            text: 'Video selected. Video descriptions are not yet available.'
+          }).catch((err) => {
+            // Handle popup closed error
+            if (!err.message?.includes('Receiving end does not exist') && 
+                !err.message?.includes('Could not establish connection')) {
+              console.warn('[Alt Texter] Unexpected error:', err);
+            }
+          });
+        } catch (e) {
+          // Popup couldn't open
+        }
+      }
+      return; // Don't proceed with image generation
+    }
+    
     if (response?.imageUrl) {
       console.log('[Alt Texter] Image URL received:', response.imageUrl);
       console.log('[Alt Texter] Detection method:', response.detectionMethod);
