@@ -45,12 +45,6 @@ lang.addEventListener('change', async function () {
   text = await translate(originalText);
   altTextInput.value = text;
   hasFinalText = true;
-  // Announce translation completion via single live region without moving focus
-  const liveRegion = document.getElementById('liveRegion');
-  if (liveRegion) {
-    liveRegion.textContent = '';
-    setTimeout(() => { liveRegion.textContent = text; }, 120);
-  }
 });
 
 async function translate(string) {
@@ -80,13 +74,6 @@ async function showAltText() {
   
   // Reveal textarea to a11y now that content is ready
   altTextInput.removeAttribute('aria-hidden');
-
-  // Announce final description via single live region (polite)
-  const liveRegion = document.getElementById('liveRegion');
-  if (liveRegion) {
-    liveRegion.textContent = '';
-    setTimeout(() => { liveRegion.textContent = displayText; }, 120);
-  }
   
   // Do not change focus here to avoid interrupting the live region announcement
 
@@ -109,10 +96,6 @@ chrome.runtime.onMessage.addListener(async function (request) {
     if (!hasFinalText && altTextInput.value.includes('Generating')) {
       const generatingMsg = isVideoPoster ? 'Generating description for video poster...' : 'Generating image description...';
       altTextInput.value = generatingMsg;
-      const liveRegion = document.getElementById('liveRegion');
-      if (liveRegion) {
-        liveRegion.textContent = generatingMsg;
-      }
     }
   } else if (request.action === 'alt-text') {
     // Check if this is a video poster description (as backup)
@@ -122,10 +105,6 @@ chrome.runtime.onMessage.addListener(async function (request) {
     if (!hasFinalText && altTextInput.value.includes('Generating')) {
       const generatingMsg = isVideoPoster ? 'Generating description for video poster...' : 'Generating image description...';
       altTextInput.value = generatingMsg;
-      const liveRegion = document.getElementById('liveRegion');
-      if (liveRegion) {
-        liveRegion.textContent = generatingMsg;
-      }
     }
     
     text = request.text;
@@ -195,12 +174,7 @@ function resetPopupForVoiceOver(forceReset = false) {
     }
   }
   
-  // Reset live region and announce generating state
-  const liveRegion = document.getElementById('liveRegion');
-  if (liveRegion) {
-    const generatingMsg = isVideoPoster ? 'Generating description for video poster...' : 'Generating image description...';
-    liveRegion.textContent = generatingMsg;
-  }
+  // No live region announcements; rely on textarea only
   
   // Do not move focus here; user can wait for the description or press Tab
   
