@@ -36,13 +36,11 @@
     </style>
   </head>
   <body>
-    <!-- Live region for progress like "Generating image description..." -->
-    <div role="status" aria-live="assertive" aria-atomic="true" id="statusMessage" style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;"></div>
-    <!-- Live region for final description announcement -->
-    <div role="status" aria-live="polite" aria-atomic="true" id="descLive" style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;"></div>
-    <textarea id="Image description" aria-label="Image description" tabindex="-1" readonly>Generating image description...</textarea>
+    <!-- Single polite, atomic live region for status and final description -->
+    <div role="status" aria-live="polite" aria-atomic="true" id="liveRegion" style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;"></div>
+    <textarea id="altText" aria-label="Image description" tabindex="0" readonly>Generating image description...</textarea>
     <button type="button" id="copyClose" tabindex="-1" aria-hidden="true">Copy and close</button>
-    <button type="reset" id="discard" tabindex="-1" aria-hidden="true">Discard</button>
+    <button type="reset" id="close" tabindex="-1" aria-hidden="true">Close</button>
     <label
       >Target language:
       <select id="lang">

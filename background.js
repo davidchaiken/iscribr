@@ -54,6 +54,14 @@ chrome.contextMenus.onClicked.addListener(async (info, _tab) => {
     chrome.runtime.sendMessage({
       action: 'alt-text',
       text: result.status === 'fulfilled' ? result.value : result.reason.message
+    }).catch((err) => {
+      // Popup closed before message could be sent - this is expected and harmless
+      // Suppress the specific error to avoid cluttering the extension console
+      if (!err.message?.includes('Receiving end does not exist') && 
+          !err.message?.includes('Could not establish connection')) {
+        // Only log unexpected errors
+        console.warn('[Alt Texter] Unexpected error sending message:', err);
+      }
     });
   }
 });
@@ -112,6 +120,14 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
         chrome.runtime.sendMessage({
           action: 'alt-text',
           text: 'No image detected. Navigate to an image or hover over one and press the shortcut again.'
+        }).catch((err) => {
+          // Popup closed before message could be sent - this is expected and harmless
+          // Suppress the specific error to avoid cluttering the extension console
+          if (!err.message?.includes('Receiving end does not exist') && 
+              !err.message?.includes('Could not establish connection')) {
+            // Only log unexpected errors
+            console.warn('[Alt Texter] Unexpected error sending message:', err);
+          }
         });
       } catch (e) {
         // Popup couldn't open, that's ok
