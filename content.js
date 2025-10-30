@@ -129,8 +129,7 @@ function findImageInElement(element) {
     if (element.tagName === 'IMG') {
       const rect = element.getBoundingClientRect();
       if (rect.width < 200 && rect.height < 200) {
-        console.log('[Alt Texter] Skipping small image (likely profile picture):', directUrl);
-        return null;
+        console.log('[Alt Texter] Detected small image (possibly profile picture):', directUrl);
       }
     }
     console.log('[Alt Texter] Element itself is an image:', directUrl);
@@ -145,8 +144,7 @@ function findImageInElement(element) {
       // Exclude small profile pictures
       const rect = imgTag.getBoundingClientRect();
       if (rect.width < 200 && rect.height < 200) {
-        console.log('[Alt Texter] Skipping small image (likely profile picture):', imgUrl);
-        return null;
+        console.log('[Alt Texter] Detected small image (possibly profile picture):', imgUrl);
       }
       console.log('[Alt Texter] Found img tag inside element:', imgUrl);
       return { element: imgTag, url: imgUrl };
@@ -588,26 +586,57 @@ function autoFixPinterestAccessibility() {
     return;
   }
   
-  console.log('[Alt Texter] Auto-fixing Pinterest accessibility...');
+  console.log('[Alt Texter] Auto-fixing Pinterest accessibility...', {
+    currentPathname: window.location.pathname,
+    currentHref: window.location.href
+  });
   
   // Detect page type and apply appropriate fix
-  if (isPinterestCloseupPage()) {
+  // Check pathname at execution time, not when function is defined
+  const currentPath = window.location.pathname;
+  const isCloseup = currentPath.includes('/pin/');
+  
+  if (isCloseup) {
     // Closeup pages are more stable, use shorter delay
     setTimeout(() => {
-      fixPinterestCloseupPage();
-    }, 1000);
-  } else if (isPinterestFeedPage()) {
-    // Feed pages need more time for dynamic content to load
-    // But we want to fix BEFORE the Skip to Content banner appears (usually ~1-2 seconds)
-    // Run fix earlier and with retry to beat the banner
+      // Re-check pathname at execution time to ensure we're still on closeup page
+      if (window.location.pathname.includes('/pin/')) {
+        fixPinterestCloseupPage();
+      } else {
+        console.log('[Alt Texter] Path changed during delay, skipping closeup fix');
+      }
+    }, 200);
+  } else {
+    // Feed pages: try immediately, then retry if needed
+    // First attempt very quickly (may catch fast-loading content)
     setTimeout(() => {
-      fixPinterestFeedPage();
-    }, 500); // Start earlier
+      // Re-check pathname at execution time to ensure we're still on feed page
+      if (!window.location.pathname.includes('/pin/')) {
+        fixPinterestFeedPage();
+      } else {
+        console.log('[Alt Texter] Path changed to closeup during delay, skipping feed fix');
+      }
+    }, 50); // Very quick first attempt
     
-    // Also retry after a delay in case first attempt was too early
+    // Second attempt in case first was too early
     setTimeout(() => {
-      fixPinterestFeedPage();
-    }, 1500);
+      // Re-check pathname at execution time to ensure we're still on feed page
+      if (!window.location.pathname.includes('/pin/')) {
+        fixPinterestFeedPage();
+      } else {
+        console.log('[Alt Texter] Path changed to closeup during delay, skipping feed fix');
+      }
+    }, 200); // Quick retry
+    
+    // Final retry for slow-loading content
+    setTimeout(() => {
+      // Re-check pathname at execution time to ensure we're still on feed page
+      if (!window.location.pathname.includes('/pin/')) {
+        fixPinterestFeedPage();
+      } else {
+        console.log('[Alt Texter] Path changed to closeup during delay, skipping feed fix');
+      }
+    }, 500); // Final fallback
   }
 }
 
@@ -693,17 +722,36 @@ function findPinterestFeedImages() {
 
 // Detect Pinterest closeup pages (reliable - /pin/ URLs are persistent)
 function isPinterestCloseupPage() {
-  return window.location.pathname.includes('/pin/');
+  const isCloseup = window.location.pathname.includes('/pin/');
+  console.log('[Alt Texter] isPinterestCloseupPage check:', {
+    pathname: window.location.pathname,
+    isCloseup: isCloseup
+  });
+  return isCloseup;
 }
 
 // Detect Pinterest feed pages (simple approach)
 function isPinterestFeedPage() {
   // If it's not a closeup page and we're on Pinterest, assume it's a feed
-  return !isPinterestCloseupPage() && window.location.hostname.includes('pinterest.com');
+  const isFeed = !isPinterestCloseupPage() && window.location.hostname.includes('pinterest.com');
+  console.log('[Alt Texter] isPinterestFeedPage check:', {
+    pathname: window.location.pathname,
+    isFeed: isFeed
+  });
+  return isFeed;
 }
 
 // Fix Pinterest closeup pages (existing logic)
 function fixPinterestCloseupPage() {
+  // Defensive check: ensure we're actually on a closeup page
+  if (!window.location.pathname.includes('/pin/')) {
+    console.warn('[Alt Texter] fixPinterestCloseupPage() called but not on closeup page!', {
+      pathname: window.location.pathname,
+      href: window.location.href
+    });
+    return;
+  }
+  
   console.log('[Alt Texter] Fixing Pinterest closeup page...');
   
   // Find the main image (largest visible image)
@@ -736,16 +784,16 @@ function fixPinterestCloseupPage() {
 
 // Fix Pinterest feed pages (new logic)
 function fixPinterestFeedPage() {
-  console.log('[Alt Texter] Fixing Pinterest feed page...');
-  
-  // Check if there's already a focused image (from Skip to Content or other)
-  const currentlyFocused = document.activeElement;
-  if (currentlyFocused && currentlyFocused.tagName === 'IMG' && 
-      currentlyFocused.src && currentlyFocused.src.includes('pinimg') &&
-      currentlyFocused.getBoundingClientRect().width > 100) {
-    console.log('[Alt Texter] Pin image already focused, skipping auto-fix');
+  // Defensive check: ensure we're actually on a feed page
+  if (window.location.pathname.includes('/pin/')) {
+    console.warn('[Alt Texter] fixPinterestFeedPage() called but on closeup page!', {
+      pathname: window.location.pathname,
+      href: window.location.href
+    });
     return;
   }
+  
+  console.log('[Alt Texter] Fixing Pinterest feed page...');
   
   // First, try to find the previously clicked Pin by looking for links to that Pin ID
   let targetPin = null;
@@ -788,9 +836,22 @@ function fixPinterestFeedPage() {
   }
   
   if (targetPin) {
-    // Check if already fixed
-    if (targetPin.getAttribute('tabindex') === '0') {
-      console.log('[Alt Texter] Feed image already focusable');
+    // Check if the currently focused element is already the target Pin
+    const currentlyFocused = document.activeElement;
+    if (currentlyFocused === targetPin || 
+        (currentlyFocused && currentlyFocused.tagName === 'IMG' && 
+         currentlyFocused.src === targetPin.src)) {
+      console.log('[Alt Texter] Target Pin already focused, skipping auto-fix');
+      return;
+    }
+    
+    // Check if already fixed (but not focused) - if so, just focus it
+    if (targetPin.getAttribute('tabindex') === '0' && currentlyFocused !== targetPin) {
+      console.log('[Alt Texter] Target Pin is focusable but not focused, focusing it now');
+      targetPin.focus();
+      return;
+    } else if (targetPin.getAttribute('tabindex') === '0' && currentlyFocused === targetPin) {
+      console.log('[Alt Texter] Target Pin already focusable and focused');
       return;
     }
     
@@ -1290,31 +1351,94 @@ if (window.location.hostname.includes('pinterest.com')) {
     }
   }, 500);
   
-  // Check for navigation changes every 500ms
+  // Function to handle navigation change
+  function handleNavigationChange(oldPath, newPath) {
+    console.log('[Alt Texter] Pinterest navigation detected:', {
+      from: oldPath,
+      to: newPath
+    });
+    
+    // Update current path immediately to avoid duplicate detections
+    currentPath = newPath;
+    
+    // If navigating to a closeup page, store the Pin ID for later use
+    if (newPath.includes('/pin/') && !oldPath.includes('/pin/')) {
+      // Extract Pin ID with retry logic to handle timing issues
+      let pinId = null;
+      const extractWithRetry = (attempts = 0) => {
+        // Try extracting from href first (most reliable)
+        pinId = extractPinIdFromUrl(window.location.href);
+        // If that fails, try extracting from pathname directly
+        if (!pinId) {
+          pinId = extractPinIdFromUrl(window.location.pathname);
+        }
+        
+        if (pinId) {
+          console.log('[Alt Texter] Navigating to closeup page, storing Pin ID:', pinId);
+          pinterestNavigationState.clickedPinId = pinId;
+          pinterestNavigationState.lastFeedUrl = oldPath;
+        } else if (attempts < 5) {
+          // Retry after a short delay if URL might not be fully updated
+          console.log('[Alt Texter] Pin ID extraction failed, retrying... (attempt', attempts + 1, ')');
+          setTimeout(() => extractWithRetry(attempts + 1), 100);
+        } else {
+          console.warn('[Alt Texter] Failed to extract Pin ID after multiple attempts');
+        }
+      };
+      
+      // Start extraction immediately
+      extractWithRetry();
+    }
+    
+    // Determine delay based on navigation direction
+    const isReturningToFeed = !newPath.includes('/pin/') && oldPath.includes('/pin/');
+    // When returning to feed, use shorter delay for faster focus
+    const delay = isReturningToFeed ? 100 : 200;
+    
+    // Re-run the accessibility fix for the new page
+    setTimeout(() => {
+      console.log('[Alt Texter] Re-running accessibility fix for new page...');
+      autoFixPinterestAccessibility();
+    }, delay);
+  }
+  
+  // Use event-based detection for immediate response (faster than polling)
+  // Listen for popstate (back/forward) and intercept pushState/replaceState
+  window.addEventListener('popstate', () => {
+    if (window.location.pathname !== currentPath) {
+      const oldPath = currentPath;
+      handleNavigationChange(oldPath, window.location.pathname);
+    }
+  });
+  
+  // Intercept pushState and replaceState for immediate detection
+  const originalPushState = history.pushState;
+  const originalReplaceState = history.replaceState;
+  
+  history.pushState = function(...args) {
+    const oldPath = currentPath;
+    originalPushState.apply(history, args);
+    if (window.location.pathname !== oldPath) {
+      handleNavigationChange(oldPath, window.location.pathname);
+    }
+  };
+  
+  history.replaceState = function(...args) {
+    const oldPath = currentPath;
+    originalReplaceState.apply(history, args);
+    if (window.location.pathname !== oldPath) {
+      handleNavigationChange(oldPath, window.location.pathname);
+    }
+  };
+  
+  // Fallback: Check for navigation changes every 200ms (reduced from 500ms)
+  // This catches any navigation we might miss with event-based detection
   setInterval(() => {
     if (window.location.pathname !== currentPath) {
-      console.log('[Alt Texter] Pinterest navigation detected:', {
-        from: currentPath,
-        to: window.location.pathname
-      });
-      
-      // If navigating to a closeup page, store the Pin ID for later use
-      if (window.location.pathname.includes('/pin/') && !currentPath.includes('/pin/')) {
-        const pinId = extractPinIdFromUrl(window.location.href);
-        console.log('[Alt Texter] Navigating to closeup page, storing Pin ID:', pinId);
-        pinterestNavigationState.clickedPinId = pinId;
-        pinterestNavigationState.lastFeedUrl = currentPath;
-      }
-      
-      currentPath = window.location.pathname;
-      
-      // Re-run the accessibility fix for the new page
-      setTimeout(() => {
-        console.log('[Alt Texter] Re-running accessibility fix for new page...');
-        autoFixPinterestAccessibility();
-      }, 1000);
+      const oldPath = currentPath;
+      handleNavigationChange(oldPath, window.location.pathname);
     }
-  }, 500);
+  }, 200);
 }
 
 // Watch for dynamic content changes on Pinterest feed pages
@@ -1450,51 +1574,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
     }
     
-    // Fall back to mouse-hovered element
-    if (!targetUrl && lastImageUrl) {
-      targetElement = lastHoveredImage;
-      targetUrl = lastImageUrl;
-      detectionMethod = 'mouse hover';
-      console.log('[Alt Texter] Falling back to mouse-hovered element');
-    }
+    // No image fallback selection; avoid confusing random choices
     
-    // Pinterest-specific fallback: if we're on Pinterest and no image detected, try to find the main image
-    if (!targetUrl && window.location.hostname.includes('pinterest.com')) {
-      console.log('[Alt Texter] Pinterest fallback: searching for main image...');
-      
-      if (window.location.pathname.includes('/pin/')) {
-        // Closeup page: find largest image
-        const allImages = Array.from(document.querySelectorAll('img'));
-        const visibleImages = allImages.filter(img => {
-          const rect = img.getBoundingClientRect();
-          return rect.width > 0 && rect.height > 0;
-        });
-        
-        visibleImages.sort((a, b) => {
-          const aSize = a.getBoundingClientRect().width * a.getBoundingClientRect().height;
-          const bSize = b.getBoundingClientRect().width * b.getBoundingClientRect().height;
-          return bSize - aSize;
-        });
-        
-        if (visibleImages[0] && visibleImages[0].getBoundingClientRect().width > 200) {
-          targetElement = visibleImages[0];
-          targetUrl = getImageUrl(visibleImages[0]);
-          detectionMethod = 'Pinterest closeup fallback';
-          console.log('[Alt Texter] Using Pinterest closeup fallback');
-        }
-      } else {
-        // Feed page: find first Pinterest image
-        const pinterestImages = findPinterestFeedImages();
-        if (pinterestImages.length > 0) {
-          targetElement = pinterestImages[0];
-          targetUrl = getImageUrl(pinterestImages[0]);
-          detectionMethod = 'Pinterest feed fallback';
-          console.log('[Alt Texter] Using Pinterest feed fallback');
-        }
-      }
-    }
-    
-    // If no image was found, check for videos as fallback
+    // If no image was found, optionally check for videos only in focused/active elements
     if (!targetUrl) {
       // Check focused element for video
       if (focusedElement) {
@@ -1526,31 +1608,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       }
       
-      // Final fallback: search for videos in viewport
-      const allVideos = Array.from(document.querySelectorAll('video'));
-      const visibleVideos = allVideos.filter(vid => {
-        const rect = vid.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0 && isLargeEnoughVideo(vid);
-      });
-      
-      if (visibleVideos.length > 0) {
-        console.log('[Alt Texter] Video detected via fallback search:', visibleVideos[0]);
-        const videoElement = visibleVideos[0];
-        // Try to get poster frame URL
-        const posterUrl = videoElement.poster || 
-                         videoElement.getAttribute('poster') || 
-                         videoElement.getAttribute('data-poster') ||
-                         null;
-        // Use the first visible, large-enough video
-        sendResponse({
-          video: true,
-          detectionMethod: 'fallback video search',
-          hasTargetElement: true,
-          targetElement: videoElement,
-          posterUrl: posterUrl
-        });
-        return true;
-      }
+      // Do not search entire viewport for random videos
     }
     
     console.log('[Alt Texter] Detection method:', detectionMethod);
