@@ -107,20 +107,7 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
           generateAltText(response.posterUrl)
         ]);
         
-        if (result.status === 'fulfilled') {
-          console.log('[Alt Texter] Poster frame description generated successfully:', result.value);
-          
-          // If using screen reader mode, announce the alt text via ARIA live region
-          if (isScreenReaderMode) {
-            console.log('[Alt Texter] Screen reader mode detected - announcing poster description');
-            await chrome.tabs.sendMessage(tab.id, {
-              action: 'announce-to-screen-reader',
-              text: result.value
-            }).catch((err) => {
-              console.warn('[Alt Texter] Could not announce to screen reader:', err);
-            });
-          }
-        } else {
+        if (result.status !== 'fulfilled') {
           console.error('[Alt Texter] Error generating poster description:', result.reason.message);
         }
         
@@ -161,30 +148,13 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
       console.log('[Alt Texter] Detection method:', response.detectionMethod);
       console.log('[Alt Texter] Generating alt text...');
       
-      const isScreenReaderMode = response.detectionMethod?.includes('screen reader') || 
-                                  response.detectionMethod?.includes('focused') ||
-                                  response.detectionMethod?.includes('active');
-      
       // Generate alt text for the image
       const [result] = await Promise.allSettled([
         generateAltText(response.imageUrl),
         chrome.action.openPopup()
       ]);
       
-      if (result.status === 'fulfilled') {
-        console.log('[Alt Texter] Alt text generated successfully:', result.value);
-        
-        // If using screen reader mode, announce the alt text via ARIA live region
-        if (isScreenReaderMode) {
-          console.log('[Alt Texter] Screen reader mode detected - announcing alt text');
-          await chrome.tabs.sendMessage(tab.id, {
-            action: 'announce-to-screen-reader',
-            text: result.value
-          }).catch((err) => {
-            console.warn('[Alt Texter] Could not announce to screen reader:', err);
-          });
-        }
-      } else {
+      if (result.status !== 'fulfilled') {
         console.error('[Alt Texter] Error generating alt text:', result.reason.message);
       }
       

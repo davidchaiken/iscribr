@@ -1568,31 +1568,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     
     sendResponse({ imageUrl: targetUrl, detectionMethod: detectionMethod });
-  } else if (request.action === 'announce-to-screen-reader') {
-    // Create or update ARIA live region for screen reader announcement
-    console.log('[Alt Texter] Announcing to screen reader:', request.text);
-    
-    let liveRegion = document.getElementById('alt-texter-live-region');
-    if (!liveRegion) {
-      liveRegion = document.createElement('div');
-      liveRegion.id = 'alt-texter-live-region';
-      liveRegion.setAttribute('aria-live', 'assertive');
-      liveRegion.setAttribute('aria-atomic', 'true');
-      liveRegion.style.position = 'absolute';
-      liveRegion.style.left = '-10000px';
-      liveRegion.style.width = '1px';
-      liveRegion.style.height = '1px';
-      liveRegion.style.overflow = 'hidden';
-      document.body.appendChild(liveRegion);
-    }
-    
-    // Clear and then set the text (helps ensure it's announced)
-    liveRegion.textContent = '';
-    setTimeout(() => {
-      liveRegion.textContent = request.text;
-    }, 100);
-    
-    sendResponse({ success: true });
   } else if (request.action === 'analyze-pinterest') {
     // Analyze Pinterest page structure
     const analysis = analyzePinterestPage();
