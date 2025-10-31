@@ -2,7 +2,7 @@
 
 This Chrome extension improves the experience on Pinterest (and maybe other web applications)
 by allowing the user to request image descriptions using the Option-I (MacOS) or Alt-I (Windows)
-key sequence. It is based on the [Alt-texter](https://github.com/GoogleChrome/chrome-extensions-samples/tree/main/functional-samples/ai.gemini-on-device-alt-texter) sample Chrome extension, which demonstrates how to use on-device multimodal AI with Gemini Nano - image understanding.
+key sequence. It is based on the [Alt-texter](https://github.com/GoogleChrome/chrome-extensions-samples/tree/main/functional-samples/ai.gemini-on-device-alt-texter) sample Chrome extension, which demonstrates how to use on-device multimodal AI with Gemini Nano - image understanding. The code for the modifications was written with the [Cursor](https://cursor.com/home) integrated development environment.
 
 ## Overview
 
