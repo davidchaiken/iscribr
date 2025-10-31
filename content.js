@@ -858,17 +858,17 @@ function fixPinterestFeedPage() {
       return;
     }
     
-    const altText = pinterestNavigationState.clickedPinId ? 
+    const descriptionText = pinterestNavigationState.clickedPinId ? 
       'Previously clicked Pin in feed' : 
       'First Pin in feed';
     
-    makeImageAccessible(targetPin, altText);
+    makeImageAccessible(targetPin, descriptionText);
     console.log('[iScribr] ✅ Pinterest feed image is now keyboard accessible and focused');
   }
 }
 
 // Shared function to make any image accessible
-function makeImageAccessible(imageElement, defaultAltText) {
+function makeImageAccessible(imageElement, defaultDescription) {
   console.log('[iScribr] Making image accessible:', {
     src: imageElement.src,
     dimensions: `${Math.round(imageElement.getBoundingClientRect().width)}x${Math.round(imageElement.getBoundingClientRect().height)}`
@@ -878,10 +878,10 @@ function makeImageAccessible(imageElement, defaultAltText) {
   imageElement.setAttribute('tabindex', '0');
   imageElement.setAttribute('role', 'img');
   
-  // Add descriptive alt text if empty
+  // Add descriptive image description if empty
   if (!imageElement.alt || imageElement.alt.trim() === '') {
     const pageTitle = document.title || 'Pinterest';
-    imageElement.alt = `${defaultAltText} - ${pageTitle}`;
+    imageElement.alt = `${defaultDescription} - ${pageTitle}`;
   }
   
   // Focus the image automatically

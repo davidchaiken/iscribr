@@ -21,7 +21,7 @@
     }
   ],
   "commands": {
-    "generate-alt-text": {
+    "describe-image": {
       "suggested_key": {
         "default": "Alt+I",
         "mac": "Alt+I"

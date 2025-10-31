@@ -6,7 +6,7 @@ key sequence. It is based on the [Alt-texter](https://github.com/GoogleChrome/ch
 
 ## Overview
 
-This extension adds a context menu entry for images on the web to generate an alt text description that is displayed in a popup window. The design is tuned to provide the image description (typically with a screen reader such as VoiceOver) to the user as quickly as possible.
+This extension adds a context menu entry for images on the web to generate an image description that is displayed in a popup window. The design is tuned to provide the image description (typically with a screen reader such as VoiceOver) to the user as quickly as possible.
 
 The extension also provides navigation improvements for Pinterest.
 * The "Skip to content" banner that appears on Pinterest when the user hits the Tab key for the first time redirects to the top left Pin in the feed rather than to a control element.
