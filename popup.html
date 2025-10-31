@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
   <head>
-    <title>Alt Text Generator</title>
+    <title>Image Description Extension</title>
     <style>
       @import 'https://unpkg.com/open-props';
       @import 'https://unpkg.com/open-props/normalize.min.css';
@@ -36,7 +36,9 @@
     </style>
   </head>
   <body>
-    <h4>Alt Texter</h4>
+    <textarea id="imageDescription" aria-label="Image description" tabindex="0" readonly>Generating image description...</textarea>
+    <button type="button" id="copyClose" tabindex="-1" aria-hidden="true">Copy and close</button>
+    <button type="reset" id="close" tabindex="-1" aria-hidden="true">Close</button>
     <label
       >Target language:
       <select id="lang">
@@ -55,10 +57,6 @@
         <option value="vi">Vietnamese</option>
       </select>
     </label>
-    <textarea id="loading">Generating alt text ...</textarea>
-    <textarea id="altText" hidden></textarea>
-    <button type="button" id="copyClose">Copy and close</button>
-    <button type="reset" id="discard">Discard</button>
     <script src="popup.js"></script>
   </body>
 </html>

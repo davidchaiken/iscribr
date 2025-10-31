@@ -1,14 +1,50 @@
 /* global Translator */
-const altTextInput = document.getElementById('altText');
+const imageDescriptionInput = document.getElementById('imageDescription');
 const loading = document.getElementById('loading');
 const lang = document.getElementById('lang');
 let text = '';
+let ariaLabelRemoved = false; // Track if we've removed aria-label for this popup session
+let isResetting = false; // Prevent multiple simultaneous resets
+let hasFinalText = false; // Prevent reset from overwriting final text
+let controlsEnabled = false; // Track when controls become tabbable
+let isVideoPoster = false; // Track if current generation is for a video poster
+
+function enableControls() {
+  if (controlsEnabled) return;
+  controlsEnabled = true;
+  // Make textarea tabbable after user intent to navigate
+  imageDescriptionInput.setAttribute('tabindex', '0');
+  // Enable buttons and make them tabbable now that content is ready
+  const copyCloseBtn = document.getElementById('copyClose');
+  const closeBtn = document.getElementById('close');
+  if (copyCloseBtn) {
+    copyCloseBtn.removeAttribute('aria-hidden');
+    copyCloseBtn.setAttribute('tabindex', '0');
+  }
+  if (closeBtn) {
+    closeBtn.removeAttribute('aria-hidden');
+    closeBtn.setAttribute('tabindex', '0');
+  }
+  // Enable language selector and show label now that content is ready
+  const langSelect = document.getElementById('lang');
+  if (langSelect) {
+    langSelect.removeAttribute('disabled');
+    langSelect.setAttribute('tabindex', '0');
+    // Show the label (which contains the select)
+    const langLabel = langSelect.parentElement;
+    if (langLabel && langLabel.tagName === 'LABEL') {
+      langLabel.removeAttribute('aria-hidden');
+    }
+  }
+}
 
 lang.addEventListener('change', async function () {
-  altTextInput.setAttribute('hidden', true);
-  loading.removeAttribute('hidden');
-  text = await translate(text);
-  showAltText();
+  // Keep textarea readonly and update it directly for translation
+  imageDescriptionInput.value = 'Translating image description...';
+  const originalText = text;
+  text = await translate(originalText);
+  imageDescriptionInput.value = text;
+  hasFinalText = true;
 });
 
 async function translate(string) {
@@ -24,28 +60,146 @@ async function translate(string) {
   }
 }
 
-async function showAltText() {
-  altTextInput.value = text;
-  loading.setAttribute('hidden', true);
-  altTextInput.removeAttribute('hidden');
+async function showDescription() {
+  // Prefix video poster descriptions so users know what they're reading
+  const displayText = isVideoPoster ? `Video poster description: ${text}` : text;
+  
+  // Set the new text
+  imageDescriptionInput.value = displayText;
+  hasFinalText = true;
+  // Keep textarea readonly so VoiceOver doesn't give editing instructions
+  // loading.setAttribute('hidden', true);
+  imageDescriptionInput.removeAttribute('hidden');
+  
+  
+  // Reveal textarea to a11y now that content is ready
+  imageDescriptionInput.removeAttribute('aria-hidden');
+  
+  // Do not change focus here to avoid interrupting the live region announcement
+
+  // Defer enabling controls until user presses Tab (user intent to navigate)
+  const onFirstTab = (e) => {
+    if (e.key === 'Tab') {
+      enableControls();
+    }
+  };
+  // Listen globally because textarea is not tabbable initially
+  document.addEventListener('keydown', onFirstTab, { once: true });
 }
 
 chrome.runtime.onMessage.addListener(async function (request) {
-  if (request.action === 'alt-text') {
+  if (request.action === 'set-video-poster-flag') {
+    // Set video poster flag early, before generation starts
+    isVideoPoster = request.isVideoPoster === true;
+    
+    // Update the generating message if we're in generating state
+    if (!hasFinalText && imageDescriptionInput.value.includes('Generating')) {
+      const generatingMsg = isVideoPoster ? 'Generating description for video poster...' : 'Generating image description...';
+      imageDescriptionInput.value = generatingMsg;
+    }
+  } else if (request.action === 'image-description') {
+    // Check if this is a video poster description (as backup)
+    isVideoPoster = request.isVideoPoster === true || isVideoPoster;
+    
+    // If we're still in generating state, update the message
+    if (!hasFinalText && imageDescriptionInput.value.includes('Generating')) {
+      const generatingMsg = isVideoPoster ? 'Generating description for video poster...' : 'Generating image description...';
+      imageDescriptionInput.value = generatingMsg;
+    }
+    
     text = request.text;
     if (lang.value != 'en') {
       text = await translate(text);
     }
-    showAltText();
+    showDescription();
   }
 });
 
+// Reset and focus the textarea when popup opens for VoiceOver
+function resetPopupForVoiceOver(forceReset = false) {
+  // If we already have final text and this isn't a forced reset (popup open), don't reset
+  if (hasFinalText && !forceReset) {
+    return;
+  }
+  
+  // Prevent multiple simultaneous resets
+  if (isResetting) {
+    return;
+  }
+  isResetting = true;
+  
+  // New popup session: clear any prior final-text state
+  hasFinalText = false;
+  controlsEnabled = false;
+  isVideoPoster = false; // Reset video poster flag
+  
+  // Reset textarea to initial state and hide from a11y to avoid VO announcing control type
+  const generatingMsg = isVideoPoster ? 'Generating description for video poster...' : 'Generating image description...';
+  imageDescriptionInput.value = generatingMsg;
+  imageDescriptionInput.setAttribute('aria-hidden', 'true');
+  imageDescriptionInput.setAttribute('tabindex', '-1');
+  imageDescriptionInput.setAttribute('readonly', 'readonly');
+  
+  // Reset the aria-label removal flag
+  ariaLabelRemoved = false;
+  
+  // Provide an accessible name but do not rely on focusing it
+  imageDescriptionInput.setAttribute('aria-label', 'Image description');
+  
+  // Hide buttons from VoiceOver until content is ready
+  const copyCloseBtn = document.getElementById('copyClose');
+  const closeBtn = document.getElementById('close');
+  if (copyCloseBtn) {
+    copyCloseBtn.setAttribute('tabindex', '-1');
+    copyCloseBtn.setAttribute('aria-hidden', 'true');
+    // Remove any existing tabIndex property
+    copyCloseBtn.tabIndex = -1;
+  }
+  if (closeBtn) {
+    closeBtn.setAttribute('tabindex', '-1');
+    closeBtn.setAttribute('aria-hidden', 'true');
+    // Remove any existing tabIndex property
+    closeBtn.tabIndex = -1;
+  }
+  
+  // Hide language selector and label from VoiceOver until content is ready
+  const langSelect = document.getElementById('lang');
+  if (langSelect) {
+    langSelect.setAttribute('disabled', 'true');
+    langSelect.setAttribute('tabindex', '-1');
+    // Hide the label (which contains the select)
+    const langLabel = langSelect.parentElement;
+    if (langLabel && langLabel.tagName === 'LABEL') {
+      langLabel.setAttribute('aria-hidden', 'true');
+    }
+  }
+  
+  // No live region announcements; rely on textarea only
+  
+  // Do not move focus here; user can wait for the description or press Tab
+  
+  // Allow reset again after a brief delay
+  setTimeout(() => {
+    isResetting = false;
+  }, 200);
+}
+
+// Call reset function when popup opens (forced reset on fresh open)
+window.addEventListener('load', () => resetPopupForVoiceOver(true));
+
+// Also reset when popup becomes visible (for cases where popup is reused)
+document.addEventListener('DOMContentLoaded', function() {
+  resetPopupForVoiceOver(true);
+});
+
+// Don't reset on visibilitychange or focus - preserve description if it exists
+
 document.getElementById('copyClose').addEventListener('click', async () => {
-  const altText = altTextInput.value;
-  await navigator.clipboard.writeText(altText);
+  const descriptionText = imageDescriptionInput.value;
+  await navigator.clipboard.writeText(descriptionText);
   window.close();
 });
 
-document.getElementById('discard').addEventListener('click', () => {
+document.getElementById('close').addEventListener('click', () => {
   window.close();
 });

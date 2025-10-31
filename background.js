@@ -1,11 +1,11 @@
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
-    id: 'generateAltText',
-    title: 'Generate alt text',
+    id: 'describeImage',
+    title: 'Describe Image',
     contexts: ['image']
   });
 });
-async function generateAltText(imgSrc) {
+async function generateDescription(imgSrc) {
   // Create the model (we're not checking availability here, but will simply fail with an exception
   const session = await self.LanguageModel.create({
     temperature: 0.0,
@@ -25,7 +25,7 @@ async function generateAltText(imgSrc) {
       content: [
         {
           type: 'text',
-          value: `Please provide a functional, objective description of the provided image in no more than around 30 words so that someone who could not see it would be able to imagine it. If possible, follow an “object-action-context” framework. The object is the main focus. The action describes what’s happening, usually what the object is doing. The context describes the surrounding environment. If there is text found in the image, do your best to transcribe the important bits, even if it extends the word count beyond 30 words. It should not contain quotation marks, as those tend to cause issues when rendered on the web. If there is no text found in the image, then there is no need to mention it. You should not begin the description with any variation of “The image”.`
+          value: `Please provide a functional, objective description of the provided image in no more than around 30 words so that someone who could not see it would be able to imagine it. If possible, follow an "object-action-context" framework. The object is the main focus. The action describes what's happening, usually what the object is doing. The context describes the surrounding environment. If there is text found in the image, do your best to transcribe the important bits, even if it extends the word count beyond 30 words. It should not contain quotation marks, as those tend to cause issues when rendered on the web. If there is no text found in the image, then there is no need to mention it. You should not begin the description with any variation of "The image".`
         },
         { type: 'image', value: imageBitmap }
       ]
@@ -35,15 +35,153 @@ async function generateAltText(imgSrc) {
 }
 
 chrome.contextMenus.onClicked.addListener(async (info, _tab) => {
-  if (info.menuItemId === 'generateAltText' && info.srcUrl) {
+  if (info.menuItemId === 'describeImage' && info.srcUrl) {
+    console.log('[iScribr] Context menu clicked for image:', info.srcUrl);
+    console.log('[iScribr] Generating image description...');
+    
     // Start opening the popup
     const [result] = await Promise.allSettled([
-      generateAltText(info.srcUrl),
+      generateDescription(info.srcUrl),
       chrome.action.openPopup()
     ]);
+    
+    if (result.status === 'fulfilled') {
+      console.log('[iScribr] Image description generated successfully:', result.value);
+    } else {
+      console.error('[iScribr] Error generating image description:', result.reason.message);
+    }
+    
     chrome.runtime.sendMessage({
-      action: 'alt-text',
+      action: 'image-description',
       text: result.status === 'fulfilled' ? result.value : result.reason.message
+    }).catch((err) => {
+      // Popup closed before message could be sent - this is expected and harmless
+      // Suppress the specific error to avoid cluttering the extension console
+      if (!err.message?.includes('Receiving end does not exist') && 
+          !err.message?.includes('Could not establish connection')) {
+        // Only log unexpected errors
+        console.warn('[iScribr] Unexpected error sending message:', err);
+      }
     });
+  }
+});
+
+// Handle keyboard shortcut
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  if (command === 'describe-image') {
+    console.log('[iScribr] Keyboard shortcut (Alt+I) pressed');
+    
+    // Ask the content script for the current image (focused or hovered)
+    const response = await chrome.tabs.sendMessage(tab.id, { 
+      action: 'get-hovered-image' 
+    }).catch(() => null);
+    
+    // Check if a video was detected instead of an image
+    if (response?.video === true) {
+      console.log('[iScribr] Video detected:', response.detectionMethod);
+      
+      // If video has a poster frame, describe that instead
+      if (response.posterUrl) {
+        console.log('[iScribr] Video has poster frame, describing poster:', response.posterUrl);
+        
+        const isScreenReaderMode = response.detectionMethod?.includes('screen reader') || 
+                                   response.detectionMethod?.includes('focused') ||
+                                   response.detectionMethod?.includes('active');
+        
+        // Open popup first and indicate it's a video poster
+        try {
+          await chrome.action.openPopup();
+          // Send a message immediately to set the video poster flag before generation
+          chrome.runtime.sendMessage({
+            action: 'set-video-poster-flag',
+            isVideoPoster: true
+          }).catch(() => {
+            // Popup might not be ready yet, that's ok
+          });
+        } catch (e) {
+          // Popup couldn't open
+        }
+        
+        // Generate image description for the poster image
+        const [result] = await Promise.allSettled([
+          generateDescription(response.posterUrl)
+        ]);
+        
+        if (result.status !== 'fulfilled') {
+          console.error('[iScribr] Error generating poster description:', result.reason.message);
+        }
+        
+        chrome.runtime.sendMessage({
+          action: 'image-description',
+          text: result.status === 'fulfilled' ? result.value : result.reason.message,
+          isVideoPoster: true // Indicate this is a video poster description
+        }).catch((err) => {
+          // Handle popup closed error
+          if (!err.message?.includes('Receiving end does not exist') && 
+              !err.message?.includes('Could not establish connection')) {
+            console.warn('[iScribr] Unexpected error:', err);
+          }
+        });
+      } else {
+        // No poster frame, show message that videos aren't supported yet
+        try {
+          await chrome.action.openPopup();
+          chrome.runtime.sendMessage({
+            action: 'image-description',
+            text: 'Video selected. Video descriptions are not yet available.'
+          }).catch((err) => {
+            // Handle popup closed error
+            if (!err.message?.includes('Receiving end does not exist') && 
+                !err.message?.includes('Could not establish connection')) {
+              console.warn('[iScribr] Unexpected error:', err);
+            }
+          });
+        } catch (e) {
+          // Popup couldn't open
+        }
+      }
+      return; // Don't proceed with image generation
+    }
+    
+    if (response?.imageUrl) {
+      console.log('[iScribr] Image URL received:', response.imageUrl);
+      console.log('[iScribr] Detection method:', response.detectionMethod);
+      console.log('[iScribr] Generating image description...');
+      
+      // Generate image description
+      const [result] = await Promise.allSettled([
+        generateDescription(response.imageUrl),
+        chrome.action.openPopup()
+      ]);
+      
+      if (result.status !== 'fulfilled') {
+        console.error('[iScribr] Error generating image description:', result.reason.message);
+      }
+      
+      chrome.runtime.sendMessage({
+        action: 'image-description',
+        text: result.status === 'fulfilled' ? result.value : result.reason.message
+      });
+    } else {
+      console.warn('[iScribr] No image detected');
+      // No image detected, show error in popup
+      try {
+        await chrome.action.openPopup();
+          chrome.runtime.sendMessage({
+            action: 'image-description',
+            text: 'No image detected. Navigate to an image or hover over one and press the shortcut again.'
+          }).catch((err) => {
+          // Popup closed before message could be sent - this is expected and harmless
+          // Suppress the specific error to avoid cluttering the extension console
+          if (!err.message?.includes('Receiving end does not exist') && 
+              !err.message?.includes('Could not establish connection')) {
+            // Only log unexpected errors
+            console.warn('[iScribr] Unexpected error sending message:', err);
+          }
+        });
+      } catch (e) {
+        // Popup couldn't open, that's ok
+      }
+    }
   }
 });
