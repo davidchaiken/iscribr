@@ -1,7 +1,7 @@
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'generateAltText',
-    title: 'Generate alt text',
+    title: 'Describe Image',
     contexts: ['image']
   });
 });
@@ -36,8 +36,8 @@ async function generateAltText(imgSrc) {
 
 chrome.contextMenus.onClicked.addListener(async (info, _tab) => {
   if (info.menuItemId === 'generateAltText' && info.srcUrl) {
-    console.log('[Alt Texter] Context menu clicked for image:', info.srcUrl);
-    console.log('[Alt Texter] Generating alt text...');
+    console.log('[iScribr] Context menu clicked for image:', info.srcUrl);
+    console.log('[iScribr] Generating image description...');
     
     // Start opening the popup
     const [result] = await Promise.allSettled([
@@ -46,9 +46,9 @@ chrome.contextMenus.onClicked.addListener(async (info, _tab) => {
     ]);
     
     if (result.status === 'fulfilled') {
-      console.log('[Alt Texter] Alt text generated successfully:', result.value);
+      console.log('[iScribr] Image description generated successfully:', result.value);
     } else {
-      console.error('[Alt Texter] Error generating alt text:', result.reason.message);
+      console.error('[iScribr] Error generating image description:', result.reason.message);
     }
     
     chrome.runtime.sendMessage({
@@ -69,7 +69,7 @@ chrome.contextMenus.onClicked.addListener(async (info, _tab) => {
 // Handle keyboard shortcut
 chrome.commands.onCommand.addListener(async (command, tab) => {
   if (command === 'generate-alt-text') {
-    console.log('[Alt Texter] Keyboard shortcut (Alt+I) pressed');
+    console.log('[iScribr] Keyboard shortcut (Alt+I) pressed');
     
     // Ask the content script for the current image (focused or hovered)
     const response = await chrome.tabs.sendMessage(tab.id, { 
@@ -78,11 +78,11 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
     
     // Check if a video was detected instead of an image
     if (response?.video === true) {
-      console.log('[Alt Texter] Video detected:', response.detectionMethod);
+      console.log('[iScribr] Video detected:', response.detectionMethod);
       
       // If video has a poster frame, describe that instead
       if (response.posterUrl) {
-        console.log('[Alt Texter] Video has poster frame, describing poster:', response.posterUrl);
+        console.log('[iScribr] Video has poster frame, describing poster:', response.posterUrl);
         
         const isScreenReaderMode = response.detectionMethod?.includes('screen reader') || 
                                    response.detectionMethod?.includes('focused') ||
@@ -108,7 +108,7 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
         ]);
         
         if (result.status !== 'fulfilled') {
-          console.error('[Alt Texter] Error generating poster description:', result.reason.message);
+          console.error('[iScribr] Error generating poster description:', result.reason.message);
         }
         
         chrome.runtime.sendMessage({
@@ -119,7 +119,7 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
           // Handle popup closed error
           if (!err.message?.includes('Receiving end does not exist') && 
               !err.message?.includes('Could not establish connection')) {
-            console.warn('[Alt Texter] Unexpected error:', err);
+            console.warn('[iScribr] Unexpected error:', err);
           }
         });
       } else {
@@ -133,7 +133,7 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
             // Handle popup closed error
             if (!err.message?.includes('Receiving end does not exist') && 
                 !err.message?.includes('Could not establish connection')) {
-              console.warn('[Alt Texter] Unexpected error:', err);
+              console.warn('[iScribr] Unexpected error:', err);
             }
           });
         } catch (e) {
@@ -144,9 +144,9 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
     }
     
     if (response?.imageUrl) {
-      console.log('[Alt Texter] Image URL received:', response.imageUrl);
-      console.log('[Alt Texter] Detection method:', response.detectionMethod);
-      console.log('[Alt Texter] Generating alt text...');
+      console.log('[iScribr] Image URL received:', response.imageUrl);
+      console.log('[iScribr] Detection method:', response.detectionMethod);
+      console.log('[iScribr] Generating image description...');
       
       // Generate alt text for the image
       const [result] = await Promise.allSettled([
@@ -155,7 +155,7 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
       ]);
       
       if (result.status !== 'fulfilled') {
-        console.error('[Alt Texter] Error generating alt text:', result.reason.message);
+        console.error('[iScribr] Error generating image description:', result.reason.message);
       }
       
       chrome.runtime.sendMessage({
@@ -163,7 +163,7 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
         text: result.status === 'fulfilled' ? result.value : result.reason.message
       });
     } else {
-      console.warn('[Alt Texter] No image detected');
+      console.warn('[iScribr] No image detected');
       // No image detected, show error in popup
       try {
         await chrome.action.openPopup();
@@ -176,7 +176,7 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
           if (!err.message?.includes('Receiving end does not exist') && 
               !err.message?.includes('Could not establish connection')) {
             // Only log unexpected errors
-            console.warn('[Alt Texter] Unexpected error sending message:', err);
+            console.warn('[iScribr] Unexpected error sending message:', err);
           }
         });
       } catch (e) {

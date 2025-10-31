@@ -57,7 +57,7 @@ document.addEventListener('mouseover', function(e) {
   if (url) {
     lastHoveredImage = e.target;
     lastImageUrl = url;
-    console.log('[Alt Texter] Image detected:', url);
+    console.log('[iScribr] Image detected:', url);
   }
 }, true);
 
@@ -93,7 +93,7 @@ document.addEventListener('click', function(e) {
         const pinId = linkElement ? extractPinIdFromUrl(linkElement.href) : null;
         const imageUrl = getImageUrl(pinImage);
         
-        console.log('[Alt Texter] Pinterest Pin clicked on feed:', {
+        console.log('[iScribr] Pinterest Pin clicked on feed:', {
           pinId: pinId,
           imageUrl: imageUrl,
           element: pinImage,
@@ -120,7 +120,7 @@ function extractPinIdFromUrl(url) {
 function findImageInElement(element) {
   if (!element) return null;
   
-  console.log('[Alt Texter] Searching for image in element:', element.tagName, element);
+  console.log('[iScribr] Searching for image in element:', element.tagName, element);
   
   // Check if the element itself is an image
   const directUrl = getImageUrl(element);
@@ -129,10 +129,10 @@ function findImageInElement(element) {
     if (element.tagName === 'IMG') {
       const rect = element.getBoundingClientRect();
       if (rect.width < 200 && rect.height < 200) {
-        console.log('[Alt Texter] Detected small image (possibly profile picture):', directUrl);
+        console.log('[iScribr] Detected small image (possibly profile picture):', directUrl);
       }
     }
-    console.log('[Alt Texter] Element itself is an image:', directUrl);
+    console.log('[iScribr] Element itself is an image:', directUrl);
     return { element: element, url: directUrl };
   }
   
@@ -144,9 +144,9 @@ function findImageInElement(element) {
       // Exclude small profile pictures
       const rect = imgTag.getBoundingClientRect();
       if (rect.width < 200 && rect.height < 200) {
-        console.log('[Alt Texter] Detected small image (possibly profile picture):', imgUrl);
+        console.log('[iScribr] Detected small image (possibly profile picture):', imgUrl);
       }
-      console.log('[Alt Texter] Found img tag inside element:', imgUrl);
+      console.log('[iScribr] Found img tag inside element:', imgUrl);
       return { element: imgTag, url: imgUrl };
     }
   }
@@ -154,11 +154,11 @@ function findImageInElement(element) {
   // Check if element has a background image
   const bgUrl = getImageUrl(element);
   if (bgUrl) {
-    console.log('[Alt Texter] Element has background image:', bgUrl);
+    console.log('[iScribr] Element has background image:', bgUrl);
     return { element: element, url: bgUrl };
   }
   
-  console.log('[Alt Texter] No image found in element');
+  console.log('[iScribr] No image found in element');
   return null;
 }
 
@@ -194,7 +194,7 @@ function analyzePinterestPage() {
     return null;
   }
   
-  console.log('[Alt Texter] Analyzing Pinterest page structure...');
+  console.log('[iScribr] Analyzing Pinterest page structure...');
   
   // Look for common Pinterest image containers
   const possibleSelectors = [
@@ -261,7 +261,7 @@ function analyzePinterestPage() {
     return bSize - aSize;
   });
   
-  console.log('[Alt Texter] Pinterest analysis results:', {
+  console.log('[iScribr] Pinterest analysis results:', {
     totalElements: results.length,
     visibleImages: visibleImages.length,
     mainImageCandidate: visibleImages[0],
@@ -289,7 +289,7 @@ function generateAccessibilityRecommendations(mainImage) {
   }
   
   if (!mainImage.alt || mainImage.alt.trim() === '') {
-    recommendations.push('Add meaningful alt text');
+    recommendations.push('Add meaningful image description');
   }
   
   if (!mainImage.ariaLabel && !mainImage.alt) {
@@ -344,7 +344,7 @@ window.fixPinterestTabNavigation = function() {
     mainImage.setAttribute('tabindex', '0');
     mainImage.setAttribute('role', 'img');
     
-    // Add descriptive alt text if empty
+    // Add descriptive image description if empty
     if (!mainImage.alt || mainImage.alt.trim() === '') {
       const pageTitle = document.title || 'Pinterest Pin';
       mainImage.alt = `Main Pin image - ${pageTitle}`;
@@ -427,7 +427,7 @@ window.testFindClickedPin = function() {
         pinImage.setAttribute('tabindex', '0');
         pinImage.setAttribute('role', 'img');
         
-        // Add descriptive alt text if empty
+        // Add descriptive image description if empty
         if (!pinImage.alt || pinImage.alt.trim() === '') {
           pinImage.alt = 'Previously clicked Pin in feed';
         }
@@ -557,7 +557,7 @@ window.fixPinterestFeedNavigation = function() {
     firstPin.setAttribute('tabindex', '0');
     firstPin.setAttribute('role', 'img');
     
-    // Add descriptive alt text if empty
+    // Add descriptive image description if empty
     if (!firstPin.alt || firstPin.alt.trim() === '') {
       firstPin.alt = 'First Pin in feed';
     }
@@ -586,7 +586,7 @@ function autoFixPinterestAccessibility() {
     return;
   }
   
-  console.log('[Alt Texter] Auto-fixing Pinterest accessibility...', {
+  console.log('[iScribr] Auto-fixing Pinterest accessibility...', {
     currentPathname: window.location.pathname,
     currentHref: window.location.href
   });
@@ -603,7 +603,7 @@ function autoFixPinterestAccessibility() {
       if (window.location.pathname.includes('/pin/')) {
         fixPinterestCloseupPage();
       } else {
-        console.log('[Alt Texter] Path changed during delay, skipping closeup fix');
+        console.log('[iScribr] Path changed during delay, skipping closeup fix');
       }
     }, 200);
   } else {
@@ -614,7 +614,7 @@ function autoFixPinterestAccessibility() {
       if (!window.location.pathname.includes('/pin/')) {
         fixPinterestFeedPage();
       } else {
-        console.log('[Alt Texter] Path changed to closeup during delay, skipping feed fix');
+        console.log('[iScribr] Path changed to closeup during delay, skipping feed fix');
       }
     }, 50); // Very quick first attempt
     
@@ -624,7 +624,7 @@ function autoFixPinterestAccessibility() {
       if (!window.location.pathname.includes('/pin/')) {
         fixPinterestFeedPage();
       } else {
-        console.log('[Alt Texter] Path changed to closeup during delay, skipping feed fix');
+        console.log('[iScribr] Path changed to closeup during delay, skipping feed fix');
       }
     }, 200); // Quick retry
     
@@ -634,7 +634,7 @@ function autoFixPinterestAccessibility() {
       if (!window.location.pathname.includes('/pin/')) {
         fixPinterestFeedPage();
       } else {
-        console.log('[Alt Texter] Path changed to closeup during delay, skipping feed fix');
+        console.log('[iScribr] Path changed to closeup during delay, skipping feed fix');
       }
     }, 500); // Final fallback
   }
@@ -642,7 +642,7 @@ function autoFixPinterestAccessibility() {
 
 // Retry logic for Pinterest feed pages (handles dynamic loading)
 function fixPinterestFeedPageWithRetry() {
-  console.log('[Alt Texter] Fixing Pinterest feed page with retry logic...');
+  console.log('[iScribr] Fixing Pinterest feed page with retry logic...');
   
   let attempts = 0;
   const maxAttempts = 5;
@@ -650,28 +650,28 @@ function fixPinterestFeedPageWithRetry() {
   
   function attemptFix() {
     attempts++;
-    console.log(`[Alt Texter] Feed fix attempt ${attempts}/${maxAttempts}`);
+    console.log(`[iScribr] Feed fix attempt ${attempts}/${maxAttempts}`);
     
     // Find Pinterest images
     const pinterestImages = findPinterestFeedImages();
     
     if (pinterestImages.length > 0) {
       const firstPin = pinterestImages[0];
-      console.log(`[Alt Texter] Found ${pinterestImages.length} Pinterest images, using first one`);
+      console.log(`[iScribr] Found ${pinterestImages.length} Pinterest images, using first one`);
       
       // Check if already fixed
       if (firstPin.getAttribute('tabindex') === '0') {
-        console.log('[Alt Texter] Feed image already focusable');
+        console.log('[iScribr] Feed image already focusable');
         return;
       }
       
       makeImageAccessible(firstPin, 'First Pin in feed');
-      console.log('[Alt Texter] ✅ Pinterest feed image is now keyboard accessible and focused');
+      console.log('[iScribr] ✅ Pinterest feed image is now keyboard accessible and focused');
     } else if (attempts < maxAttempts) {
-      console.log(`[Alt Texter] No Pinterest images found, retrying in ${retryDelay}ms...`);
+      console.log(`[iScribr] No Pinterest images found, retrying in ${retryDelay}ms...`);
       setTimeout(attemptFix, retryDelay);
     } else {
-      console.log('[Alt Texter] ❌ No Pinterest images found after maximum attempts');
+      console.log('[iScribr] ❌ No Pinterest images found after maximum attempts');
     }
   }
   
@@ -726,7 +726,7 @@ function findPinterestFeedImages() {
 // Detect Pinterest closeup pages (reliable - /pin/ URLs are persistent)
 function isPinterestCloseupPage() {
   const isCloseup = window.location.pathname.includes('/pin/');
-  console.log('[Alt Texter] isPinterestCloseupPage check:', {
+  console.log('[iScribr] isPinterestCloseupPage check:', {
     pathname: window.location.pathname,
     isCloseup: isCloseup
   });
@@ -737,7 +737,7 @@ function isPinterestCloseupPage() {
 function isPinterestFeedPage() {
   // If it's not a closeup page and we're on Pinterest, assume it's a feed
   const isFeed = !isPinterestCloseupPage() && window.location.hostname.includes('pinterest.com');
-  console.log('[Alt Texter] isPinterestFeedPage check:', {
+  console.log('[iScribr] isPinterestFeedPage check:', {
     pathname: window.location.pathname,
     isFeed: isFeed
   });
@@ -748,14 +748,14 @@ function isPinterestFeedPage() {
 function fixPinterestCloseupPage() {
   // Defensive check: ensure we're actually on a closeup page
   if (!window.location.pathname.includes('/pin/')) {
-    console.warn('[Alt Texter] fixPinterestCloseupPage() called but not on closeup page!', {
+    console.warn('[iScribr] fixPinterestCloseupPage() called but not on closeup page!', {
       pathname: window.location.pathname,
       href: window.location.href
     });
     return;
   }
   
-  console.log('[Alt Texter] Fixing Pinterest closeup page...');
+  console.log('[iScribr] Fixing Pinterest closeup page...');
   
   // Find the main image (largest visible image)
   const allImages = Array.from(document.querySelectorAll('img'));
@@ -776,12 +776,12 @@ function fixPinterestCloseupPage() {
   if (mainImage && mainImage.getBoundingClientRect().width > 200) {
     // Check if already fixed
     if (mainImage.getAttribute('tabindex') === '0') {
-      console.log('[Alt Texter] Closeup image already focusable');
+      console.log('[iScribr] Closeup image already focusable');
       return;
     }
     
     makeImageAccessible(mainImage, 'Main Pin image');
-    console.log('[Alt Texter] ✅ Pinterest closeup image is now keyboard accessible and focused');
+    console.log('[iScribr] ✅ Pinterest closeup image is now keyboard accessible and focused');
   }
 }
 
@@ -789,20 +789,20 @@ function fixPinterestCloseupPage() {
 function fixPinterestFeedPage() {
   // Defensive check: ensure we're actually on a feed page
   if (window.location.pathname.includes('/pin/')) {
-    console.warn('[Alt Texter] fixPinterestFeedPage() called but on closeup page!', {
+    console.warn('[iScribr] fixPinterestFeedPage() called but on closeup page!', {
       pathname: window.location.pathname,
       href: window.location.href
     });
     return;
   }
   
-  console.log('[Alt Texter] Fixing Pinterest feed page...');
+  console.log('[iScribr] Fixing Pinterest feed page...');
   
   // First, try to find the previously clicked Pin by looking for links to that Pin ID
   let targetPin = null;
   
   if (pinterestNavigationState.clickedPinId) {
-    console.log('[Alt Texter] Looking for previously clicked Pin:', {
+    console.log('[iScribr] Looking for previously clicked Pin:', {
       pinId: pinterestNavigationState.clickedPinId
     });
     
@@ -816,7 +816,7 @@ function fixPinterestFeedPage() {
       
       if (pinImage && pinImage.getBoundingClientRect().width > 100 && pinImage.getBoundingClientRect().height > 100) {
         targetPin = pinImage;
-        console.log('[Alt Texter] Found previously clicked Pin in feed via link!', {
+        console.log('[iScribr] Found previously clicked Pin in feed via link!', {
           pinId: pinterestNavigationState.clickedPinId,
           foundUrl: targetPin.src
         });
@@ -824,7 +824,7 @@ function fixPinterestFeedPage() {
     }
     
     if (!targetPin) {
-      console.log('[Alt Texter] Previously clicked Pin not found in current feed', {
+      console.log('[iScribr] Previously clicked Pin not found in current feed', {
         pinId: pinterestNavigationState.clickedPinId,
         pinLinksFound: pinLinks.length
       });
@@ -835,7 +835,7 @@ function fixPinterestFeedPage() {
   if (!targetPin) {
     const pinterestImages = findPinterestFeedImages();
     targetPin = pinterestImages[0];
-    console.log('[Alt Texter] Using first Pin in feed');
+    console.log('[iScribr] Using first Pin in feed');
   }
   
   if (targetPin) {
@@ -844,17 +844,17 @@ function fixPinterestFeedPage() {
     if (currentlyFocused === targetPin || 
         (currentlyFocused && currentlyFocused.tagName === 'IMG' && 
          currentlyFocused.src === targetPin.src)) {
-      console.log('[Alt Texter] Target Pin already focused, skipping auto-fix');
+      console.log('[iScribr] Target Pin already focused, skipping auto-fix');
       return;
     }
     
     // Check if already fixed (but not focused) - if so, just focus it
     if (targetPin.getAttribute('tabindex') === '0' && currentlyFocused !== targetPin) {
-      console.log('[Alt Texter] Target Pin is focusable but not focused, focusing it now');
+      console.log('[iScribr] Target Pin is focusable but not focused, focusing it now');
       targetPin.focus();
       return;
     } else if (targetPin.getAttribute('tabindex') === '0' && currentlyFocused === targetPin) {
-      console.log('[Alt Texter] Target Pin already focusable and focused');
+      console.log('[iScribr] Target Pin already focusable and focused');
       return;
     }
     
@@ -863,13 +863,13 @@ function fixPinterestFeedPage() {
       'First Pin in feed';
     
     makeImageAccessible(targetPin, altText);
-    console.log('[Alt Texter] ✅ Pinterest feed image is now keyboard accessible and focused');
+    console.log('[iScribr] ✅ Pinterest feed image is now keyboard accessible and focused');
   }
 }
 
 // Shared function to make any image accessible
 function makeImageAccessible(imageElement, defaultAltText) {
-  console.log('[Alt Texter] Making image accessible:', {
+  console.log('[iScribr] Making image accessible:', {
     src: imageElement.src,
     dimensions: `${Math.round(imageElement.getBoundingClientRect().width)}x${Math.round(imageElement.getBoundingClientRect().height)}`
   });
@@ -888,7 +888,7 @@ function makeImageAccessible(imageElement, defaultAltText) {
   try {
     imageElement.focus();
   } catch (error) {
-    console.log('[Alt Texter] Focus failed:', error.message);
+    console.log('[iScribr] Focus failed:', error.message);
   }
 }
 
@@ -908,7 +908,7 @@ if (window.location.hostname.includes('pinterest.com')) {
     const focused = e.target;
     focusChangeCount++;
     
-    console.log('[Alt Texter] Focus change detected:', {
+    console.log('[iScribr] Focus change detected:', {
       count: focusChangeCount,
       element: focused.tagName,
       id: focused.id,
@@ -929,7 +929,7 @@ if (window.location.hostname.includes('pinterest.com')) {
     if (!window.location.pathname.includes('/pin/')) {
       // Check conditions
       const shouldRedirect = (isNonInteractiveFocus || isRoleMain);
-      console.log('[Alt Texter] Evaluating redirect:', {
+      console.log('[iScribr] Evaluating redirect:', {
         isRoleMain,
         isNonInteractiveFocus,
         focusChangeCount,
@@ -939,7 +939,7 @@ if (window.location.hostname.includes('pinterest.com')) {
       });
       
       if (shouldRedirect && focusChangeCount >= 2) {
-        console.log('[Alt Texter] Detected non-interactive focus (isRoleMain:', isRoleMain, ', isNonInteractive:', isNonInteractiveFocus, ')');
+        console.log('[iScribr] Detected non-interactive focus (isRoleMain:', isRoleMain, ', isNonInteractive:', isNonInteractiveFocus, ')');
         // Wait a moment to see if focus settles
         setTimeout(() => {
           const stillFocused = document.activeElement;
@@ -948,7 +948,7 @@ if (window.location.hostname.includes('pinterest.com')) {
                                        !stillFocused.hasAttribute('tabindex');
           const stillRoleMain = stillFocused.getAttribute('role') === 'main';
           
-          console.log('[Alt Texter] After delay, checking if still non-interactive:', {
+          console.log('[iScribr] After delay, checking if still non-interactive:', {
             stillNonInteractive,
             stillRoleMain,
             tagName: stillFocused.tagName,
@@ -956,19 +956,19 @@ if (window.location.hostname.includes('pinterest.com')) {
           });
           
           if (stillNonInteractive || stillRoleMain) {
-            console.log('[Alt Texter] Redirecting focus from non-interactive element to first Pin');
-            console.log('[Alt Texter] Still focused element:', {
+            console.log('[iScribr] Redirecting focus from non-interactive element to first Pin');
+            console.log('[iScribr] Still focused element:', {
               tagName: stillFocused.tagName,
               role: stillFocused.getAttribute('role'),
               className: stillFocused.className?.substring(0, 50)
             });
             
             const pinterestImages = findPinterestFeedImages();
-            console.log('[Alt Texter] Found Pinterest images:', pinterestImages.length);
+            console.log('[iScribr] Found Pinterest images:', pinterestImages.length);
             
             if (pinterestImages.length > 0) {
               const firstPin = pinterestImages[0];
-              console.log('[Alt Texter] First Pin details:', {
+              console.log('[iScribr] First Pin details:', {
                 src: firstPin.src?.substring(0, 50),
                 tabindex: firstPin.getAttribute('tabindex'),
                 dimensions: `${Math.round(firstPin.getBoundingClientRect().width)}x${Math.round(firstPin.getBoundingClientRect().height)}`
@@ -980,18 +980,18 @@ if (window.location.hostname.includes('pinterest.com')) {
                 if (!firstPin.alt || firstPin.alt.trim() === '') {
                   firstPin.alt = 'First Pin in feed';
                 }
-                console.log('[Alt Texter] Made first Pin focusable');
+                console.log('[iScribr] Made first Pin focusable');
               }
               
               try {
                 firstPin.focus();
-                console.log('[Alt Texter] ✅ Focused first Pin after redirect');
-                console.log('[Alt Texter] Active element after focus:', document.activeElement.tagName);
+                console.log('[iScribr] ✅ Focused first Pin after redirect');
+                console.log('[iScribr] Active element after focus:', document.activeElement.tagName);
               } catch (error) {
-                console.error('[Alt Texter] Error focusing first Pin:', error);
+                console.error('[iScribr] Error focusing first Pin:', error);
               }
             } else {
-              console.log('[Alt Texter] ❌ No Pinterest images found to focus');
+              console.log('[iScribr] ❌ No Pinterest images found to focus');
             }
           }
         }, 200);
@@ -1021,7 +1021,7 @@ if (window.location.hostname.includes('pinterest.com')) {
                                 !active.hasAttribute('tabindex');
       
       if ((isNonInteractive || isRoleMain) && active !== document.body) {
-        console.log('[Alt Texter] Periodic check: Focus stuck on non-interactive element, redirecting...', {
+        console.log('[iScribr] Periodic check: Focus stuck on non-interactive element, redirecting...', {
           tagName: active.tagName,
           role: active.getAttribute('role'),
           className: active.className?.substring(0, 50)
@@ -1039,7 +1039,7 @@ if (window.location.hostname.includes('pinterest.com')) {
               }
             }
             firstPin.focus();
-            console.log('[Alt Texter] ✅ Redirected focus to first Pin via periodic check');
+            console.log('[iScribr] ✅ Redirected focus to first Pin via periodic check');
           }
         }, 100);
       }
@@ -1120,7 +1120,7 @@ if (window.location.hostname.includes('pinterest.com')) {
     });
     
     if (foundElements.length > 0) {
-      console.log('[Alt Texter] Skip to Content banner detected:', {
+      console.log('[iScribr] Skip to Content banner detected:', {
         count: foundElements.length,
         elements: foundElements,
         currentUrl: window.location.href,
@@ -1138,15 +1138,15 @@ if (window.location.hostname.includes('pinterest.com')) {
     }
     
     // Don't re-attach if already done, but log if we try
-    if (skipContainer.dataset.altTexterIntercepted) {
-      console.log('[Alt Texter] Skip container already intercepted, skipping');
+    if (skipContainer.dataset.iscribrIntercepted) {
+      console.log('[iScribr] Skip container already intercepted, skipping');
       return;
     }
     
-    skipContainer.dataset.altTexterIntercepted = 'true';
+    skipContainer.dataset.iscribrIntercepted = 'true';
     
     // Log container info immediately
-    console.log('[Alt Texter] Skip container info:', {
+    console.log('[iScribr] Skip container info:', {
       tagName: skipContainer.tagName,
       className: skipContainer.className,
       children: skipContainer.children.length,
@@ -1155,22 +1155,22 @@ if (window.location.hostname.includes('pinterest.com')) {
     
     // Add click listener to the container (using capture phase to intercept early)
     const clickHandler = function(e) {
-      console.log('[Alt Texter] Skip to Content activated, intercepting...');
-      console.log('[Alt Texter] Event target:', e.target);
-      console.log('[Alt Texter] Event type:', e.type);
-      console.log('[Alt Texter] Current path:', window.location.pathname);
+      console.log('[iScribr] Skip to Content activated, intercepting...');
+      console.log('[iScribr] Event target:', e.target);
+      console.log('[iScribr] Event type:', e.type);
+      console.log('[iScribr] Current path:', window.location.pathname);
       
       // Let Pinterest's default behavior happen first
       setTimeout(() => {
         if (!window.location.pathname.includes('/pin/')) {
           // On feed pages, focus the first Pin
-          console.log('[Alt Texter] On feed page, looking for first Pin...');
+          console.log('[iScribr] On feed page, looking for first Pin...');
           const pinterestImages = findPinterestFeedImages();
-          console.log('[Alt Texter] Found Pinterest images:', pinterestImages.length);
+          console.log('[iScribr] Found Pinterest images:', pinterestImages.length);
           
           if (pinterestImages.length > 0) {
             const firstPin = pinterestImages[0];
-            console.log('[Alt Texter] First Pin element:', {
+            console.log('[iScribr] First Pin element:', {
               src: firstPin.src,
               currentTabIndex: firstPin.getAttribute('tabindex'),
               dimensions: `${Math.round(firstPin.getBoundingClientRect().width)}x${Math.round(firstPin.getBoundingClientRect().height)}`
@@ -1183,19 +1183,19 @@ if (window.location.hostname.includes('pinterest.com')) {
               if (!firstPin.alt || firstPin.alt.trim() === '') {
                 firstPin.alt = 'First Pin in feed';
               }
-              console.log('[Alt Texter] Made first Pin focusable');
+              console.log('[iScribr] Made first Pin focusable');
             }
             
             // Focus the first Pin
             try {
               firstPin.focus();
-              console.log('[Alt Texter] Focused on first Pin after Skip to Content');
-              console.log('[Alt Texter] Active element after focus:', document.activeElement);
+              console.log('[iScribr] Focused on first Pin after Skip to Content');
+              console.log('[iScribr] Active element after focus:', document.activeElement);
             } catch (error) {
-              console.error('[Alt Texter] Error focusing first Pin:', error);
+              console.error('[iScribr] Error focusing first Pin:', error);
             }
           } else {
-            console.log('[Alt Texter] No Pinterest images found to focus');
+            console.log('[iScribr] No Pinterest images found to focus');
           }
         } else {
           // On closeup pages, focus the main Pin image
@@ -1218,7 +1218,7 @@ if (window.location.hostname.includes('pinterest.com')) {
               mainImage.setAttribute('role', 'img');
             }
             mainImage.focus();
-            console.log('[Alt Texter] Focused on main Pin image after Skip to Content');
+            console.log('[iScribr] Focused on main Pin image after Skip to Content');
           }
         }
       }, 100);
@@ -1227,14 +1227,14 @@ if (window.location.hostname.includes('pinterest.com')) {
     // Attach click and keyboard listeners to container
     skipContainer.addEventListener('click', clickHandler, true);
     skipContainer.addEventListener('click', function(e) {
-      console.log('[Alt Texter] Click detected on skip container or child');
+      console.log('[iScribr] Click detected on skip container or child');
       clickHandler(e);
     }, false);
     
     // Add keyboard event listeners for Enter and Space
     const keyboardHandler = function(e) {
       if (e.key === 'Enter' || e.key === ' ' || e.keyCode === 13 || e.keyCode === 32) {
-        console.log('[Alt Texter] Keyboard activation detected on skip container:', e.key);
+        console.log('[iScribr] Keyboard activation detected on skip container:', e.key);
         clickHandler(e);
       }
     };
@@ -1246,7 +1246,7 @@ if (window.location.hostname.includes('pinterest.com')) {
     // Log child element structure
     if (skipContainer.children.length > 0) {
       const child = skipContainer.children[0];
-      console.log('[Alt Texter] Skip container child element:', {
+      console.log('[iScribr] Skip container child element:', {
         tagName: child.tagName,
         className: child.className,
         textContent: child.textContent?.trim(),
@@ -1258,25 +1258,25 @@ if (window.location.hostname.includes('pinterest.com')) {
     // Also check if there's a link or button inside
     const innerLink = skipContainer.querySelector('a, button');
     if (innerLink) {
-      console.log('[Alt Texter] Found inner link/button in skip container, attaching listener');
+      console.log('[iScribr] Found inner link/button in skip container, attaching listener');
       innerLink.addEventListener('click', function(e) {
-        console.log('[Alt Texter] Inner link/button clicked');
+        console.log('[iScribr] Inner link/button clicked');
         clickHandler(e);
       }, true);
     } else {
       // No link/button found, attach to child element directly
       if (skipContainer.children.length > 0) {
         const child = skipContainer.children[0];
-        console.log('[Alt Texter] Attaching listeners to child element:', child.tagName);
+        console.log('[iScribr] Attaching listeners to child element:', child.tagName);
         child.addEventListener('click', function(e) {
-          console.log('[Alt Texter] Child element clicked');
+          console.log('[iScribr] Child element clicked');
           clickHandler(e);
         }, true);
         
         // Also add keyboard listeners to child
         const childKeyboardHandler = function(e) {
           if (e.key === 'Enter' || e.key === ' ' || e.keyCode === 13 || e.keyCode === 32) {
-            console.log('[Alt Texter] Keyboard activation detected on child:', e.key);
+            console.log('[iScribr] Keyboard activation detected on child:', e.key);
             clickHandler(e);
           }
         };
@@ -1289,12 +1289,12 @@ if (window.location.hostname.includes('pinterest.com')) {
     
     // Also intercept focus events (Skip to Content might trigger focus)
     skipContainer.addEventListener('focus', function(e) {
-      console.log('[Alt Texter] Skip container received focus');
+      console.log('[iScribr] Skip container received focus');
     }, true);
     
-    console.log('[Alt Texter] Skip to Content interceptor attached');
-    console.log('[Alt Texter] Skip container element:', skipContainer);
-    console.log('[Alt Texter] Skip container children:', skipContainer.children.length);
+    console.log('[iScribr] Skip to Content interceptor attached');
+    console.log('[iScribr] Skip container element:', skipContainer);
+    console.log('[iScribr] Skip container children:', skipContainer.children.length);
   }
   
   // Check for Skip to Content banner and attach interceptor
@@ -1322,10 +1322,10 @@ if (window.location.hostname.includes('pinterest.com')) {
   setTimeout(() => {
     const skipContainer = document.querySelector('[data-test-id="skipToContentContainer"]');
     if (skipContainer) {
-      console.log('[Alt Texter] Found skip container immediately, attaching interceptor');
+      console.log('[iScribr] Found skip container immediately, attaching interceptor');
       interceptSkipToContent(skipContainer);
     } else {
-      console.log('[Alt Texter] Skip container not found immediately, will keep checking');
+      console.log('[iScribr] Skip container not found immediately, will keep checking');
     }
   }, 500);
   
@@ -1333,8 +1333,8 @@ if (window.location.hostname.includes('pinterest.com')) {
   if (document.body) {
     const skipObserver = new MutationObserver(() => {
       const skipContainer = document.querySelector('[data-test-id="skipToContentContainer"]');
-      if (skipContainer && !skipContainer.dataset.altTexterIntercepted) {
-        console.log('[Alt Texter] Found skip container via MutationObserver, attaching interceptor');
+      if (skipContainer && !skipContainer.dataset.iscribrIntercepted) {
+        console.log('[iScribr] Found skip container via MutationObserver, attaching interceptor');
         interceptSkipToContent(skipContainer);
       }
     });
@@ -1348,15 +1348,15 @@ if (window.location.hostname.includes('pinterest.com')) {
   // Also keep checking periodically
   setInterval(() => {
     const skipContainer = document.querySelector('[data-test-id="skipToContentContainer"]');
-    if (skipContainer && !skipContainer.dataset.altTexterIntercepted) {
-      console.log('[Alt Texter] Found skip container later, attaching interceptor');
+    if (skipContainer && !skipContainer.dataset.iscribrIntercepted) {
+      console.log('[iScribr] Found skip container later, attaching interceptor');
       interceptSkipToContent(skipContainer);
     }
   }, 500);
   
   // Function to handle navigation change
   function handleNavigationChange(oldPath, newPath) {
-    console.log('[Alt Texter] Pinterest navigation detected:', {
+    console.log('[iScribr] Pinterest navigation detected:', {
       from: oldPath,
       to: newPath
     });
@@ -1377,15 +1377,15 @@ if (window.location.hostname.includes('pinterest.com')) {
         }
         
         if (pinId) {
-          console.log('[Alt Texter] Navigating to closeup page, storing Pin ID:', pinId);
+          console.log('[iScribr] Navigating to closeup page, storing Pin ID:', pinId);
           pinterestNavigationState.clickedPinId = pinId;
           pinterestNavigationState.lastFeedUrl = oldPath;
         } else if (attempts < 5) {
           // Retry after a short delay if URL might not be fully updated
-          console.log('[Alt Texter] Pin ID extraction failed, retrying... (attempt', attempts + 1, ')');
+          console.log('[iScribr] Pin ID extraction failed, retrying... (attempt', attempts + 1, ')');
           setTimeout(() => extractWithRetry(attempts + 1), 100);
         } else {
-          console.warn('[Alt Texter] Failed to extract Pin ID after multiple attempts');
+          console.warn('[iScribr] Failed to extract Pin ID after multiple attempts');
         }
       };
       
@@ -1400,7 +1400,7 @@ if (window.location.hostname.includes('pinterest.com')) {
     
     // Re-run the accessibility fix for the new page
     setTimeout(() => {
-      console.log('[Alt Texter] Re-running accessibility fix for new page...');
+      console.log('[iScribr] Re-running accessibility fix for new page...');
       autoFixPinterestAccessibility();
     }, delay);
   }
@@ -1470,13 +1470,13 @@ if (window.location.hostname.includes('pinterest.com') && !window.location.pathn
         });
         
         if (hasNewImages) {
-          console.log('[Alt Texter] New Pinterest images detected, checking for fix...');
+          console.log('[iScribr] New Pinterest images detected, checking for fix...');
           // Check if we need to fix the first image
           const pinterestImages = findPinterestFeedImages();
           if (pinterestImages.length > 0) {
             const firstPin = pinterestImages[0];
             if (firstPin.getAttribute('tabindex') !== '0') {
-              console.log('[Alt Texter] Fixing newly loaded Pinterest image');
+              console.log('[iScribr] Fixing newly loaded Pinterest image');
               makeImageAccessible(firstPin, 'First Pin in feed');
             }
           }
@@ -1489,7 +1489,7 @@ if (window.location.hostname.includes('pinterest.com') && !window.location.pathn
         subtree: true
       });
       
-      console.log('[Alt Texter] Set up MutationObserver for dynamic Pinterest content');
+      console.log('[iScribr] Set up MutationObserver for dynamic Pinterest content');
     } else {
       // Retry if document.body isn't ready yet
       setTimeout(setupMutationObserver, 100);
@@ -1507,7 +1507,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     let targetUrl = null;
     let detectionMethod = '';
     
-    console.log('[Alt Texter] Image detection debug info:', {
+    console.log('[iScribr] Image detection debug info:', {
       focusedElement: focusedElement?.tagName,
       activeElement: document.activeElement?.tagName,
       lastImageUrl: lastImageUrl,
@@ -1517,18 +1517,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
     // First, check if there's a focused element (VoiceOver/screen reader navigation)
     if (focusedElement) {
-      console.log('[Alt Texter] Checking focused element:', focusedElement.tagName);
+      console.log('[iScribr] Checking focused element:', focusedElement.tagName);
       const imageInfo = findImageInElement(focusedElement);
       if (imageInfo) {
         targetElement = imageInfo.element;
         targetUrl = imageInfo.url;
         detectionMethod = 'focused element (screen reader)';
-        console.log('[Alt Texter] Using focused element (screen reader detected)');
+        console.log('[iScribr] Using focused element (screen reader detected)');
       } else {
         // No image found, check for video in focused element
         const videoElement = findVideoInElement(focusedElement);
         if (videoElement && isLargeEnoughVideo(videoElement)) {
-          console.log('[Alt Texter] Video detected in focused element:', videoElement);
+          console.log('[iScribr] Video detected in focused element:', videoElement);
           // Try to get poster frame URL
           const posterUrl = videoElement.poster || 
                            videoElement.getAttribute('poster') || 
@@ -1548,18 +1548,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
     // Also check document.activeElement as a backup
     if (!targetUrl && document.activeElement && document.activeElement !== focusedElement) {
-      console.log('[Alt Texter] Checking document.activeElement:', document.activeElement.tagName);
+      console.log('[iScribr] Checking document.activeElement:', document.activeElement.tagName);
       const imageInfo = findImageInElement(document.activeElement);
       if (imageInfo) {
         targetElement = imageInfo.element;
         targetUrl = imageInfo.url;
         detectionMethod = 'active element';
-        console.log('[Alt Texter] Using document.activeElement');
+        console.log('[iScribr] Using document.activeElement');
       } else {
         // No image found, check for video in active element
         const videoElement = findVideoInElement(document.activeElement);
         if (videoElement && isLargeEnoughVideo(videoElement)) {
-          console.log('[Alt Texter] Video detected in active element:', videoElement);
+          console.log('[iScribr] Video detected in active element:', videoElement);
           // Try to get poster frame URL
           const posterUrl = videoElement.poster || 
                            videoElement.getAttribute('poster') || 
@@ -1585,7 +1585,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (focusedElement) {
         const videoElement = findVideoInElement(focusedElement);
         if (videoElement && isLargeEnoughVideo(videoElement)) {
-          console.log('[Alt Texter] Video detected in focused element:', videoElement);
+          console.log('[iScribr] Video detected in focused element:', videoElement);
           sendResponse({
             video: true,
             detectionMethod: 'focused video (screen reader)',
@@ -1600,7 +1600,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (document.activeElement && document.activeElement !== focusedElement) {
         const videoElement = findVideoInElement(document.activeElement);
         if (videoElement && isLargeEnoughVideo(videoElement)) {
-          console.log('[Alt Texter] Video detected in active element:', videoElement);
+          console.log('[iScribr] Video detected in active element:', videoElement);
           sendResponse({
             video: true,
             detectionMethod: 'active element (video)',
@@ -1614,12 +1614,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       // Do not search entire viewport for random videos
     }
     
-    console.log('[Alt Texter] Detection method:', detectionMethod);
-    console.log('[Alt Texter] Sending image URL to background:', targetUrl);
+    console.log('[iScribr] Detection method:', detectionMethod);
+    console.log('[iScribr] Sending image URL to background:', targetUrl);
     
     // Additional debugging for Pinterest
     if (window.location.hostname.includes('pinterest.com')) {
-      console.log('[Alt Texter] Pinterest detection summary:', {
+      console.log('[iScribr] Pinterest detection summary:', {
         targetUrl: targetUrl,
         detectionMethod: detectionMethod,
         hasTargetElement: !!targetElement,
@@ -1651,7 +1651,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // Focus the element
         element.focus();
         
-        console.log('[Alt Texter] Made Pinterest image focusable and focused it');
+        console.log('[iScribr] Made Pinterest image focusable and focused it');
         sendResponse({ 
           success: true, 
           element: element.tagName,
@@ -1659,7 +1659,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           dimensions: analysis.mainImageCandidate.dimensions
         });
       } catch (error) {
-        console.error('[Alt Texter] Error making Pinterest image focusable:', error);
+        console.error('[iScribr] Error making Pinterest image focusable:', error);
         sendResponse({ success: false, error: error.message });
       }
     } else {

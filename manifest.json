@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Alt Texter",
+  "name": "iScribr",
   "version": "1.0",
-  "description": "Generates alt text for images using the Gemini Nano Prompt API.",
+  "description": "Generates image descriptions using the Gemini Nano Prompt API.",
   "permissions": ["contextMenus", "clipboardWrite", "activeTab"],
   "host_permissions": ["<all_urls>"],
   "minimum_chrome_version": "138",
@@ -26,7 +26,7 @@
         "default": "Alt+I",
         "mac": "Alt+I"
       },
-      "description": "Generate alt text for the image under cursor"
+      "description": "Describe image under cursor"
     }
   },
   "icons": {
